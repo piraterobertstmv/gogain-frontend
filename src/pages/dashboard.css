@@ -1,0 +1,23 @@
+.custom-checkbox input[type="checkbox"] {
+    display: none;
+}
+
+.custom-checkbox .checkmark {
+    width: 13px;
+    height: 13px;
+    border: 2px solid #000000;
+    border-radius: 4px;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+    position: relative;
+}
+
+/* .custom-checkbox input[type="checkbox"]:checked + .checkmark {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+} */
+
+.custom-checkbox input[type="checkbox"]:checked + .checkmark:after {
+    border: solid transparent;
+}

@@ -1,0 +1,40 @@
+.logout-button {
+    background-color: rgb(255, 218, 201); /* Tomato color */
+    color: rgb(217, 82, 19);
+    font-size: 16px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin: 2vw;
+    height: max-content;
+  }
+  
+  .logout-button:hover {
+    background-color: rgb(217, 82, 19); /* Darker shade for hover */
+    color: white;
+  }
+  
+  .logout-button:active {
+    background-color: rgb(217, 82, 19); /* Darkest shade for active */
+    transform: scale(0.98); /* Slightly shrink on click */
+    color: white;
+  }
+  
+  .logout-button:focus {
+    outline: none;
+  }
+
+  .logout-button-grey {
+    background-color: rgb(242, 242, 242); /* Tomato color */
+    color: black;
+    font-size: 16px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin: 2vw;
+    height: max-content;
+  }

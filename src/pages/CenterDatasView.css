@@ -1,0 +1,33 @@
+.table-container {
+    width: 100%;
+    max-width:25vw;
+    background-color: #ffffff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 1vh 0vw 1vh 2vw;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 15px;
+    text-align: center;
+    font-weight: normal;
+    border-bottom: 1px solid #ccc;
+  }
+  th {
+    background-color: #f9f9f9;
+    font-weight: bold;
+    color: #333;
+  }
+  .highlight {
+    font-weight: bold;
+  }
+  td {
+    color: #333;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
