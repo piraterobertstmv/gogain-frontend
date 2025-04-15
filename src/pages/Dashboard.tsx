@@ -287,9 +287,6 @@ export function Dashboard({ data }: { data: any }) {
     const [financialTransItems, setFinancialTransItems] = useState<string[]>([]);
     const [piePlotRevenueItems, setPiePlotRevenueItems] = useState<string[]>([]);
     const [revenuePerEmployeItems, setRevenuePerEmployeItems] = useState<string[]>([]);
-    const [currentYear, setCurrentYear] = useState<number>(initialYear);
-    const [monthNumber, setMonthNumber] = useState<number>(initialMonth);
-    const [maxDays, setMaxDays] = useState<number>(initialMaxDays);
     const [isFilterFinancal, setIsFilterFinancal] = useState<boolean>(true);
     const [isFilterPiePlot, setIsFilterPiePlot] = useState<boolean>(true);
     const [isFilterRevenue, setIsFilterRevenue] = useState<boolean>(true);
@@ -305,12 +302,12 @@ export function Dashboard({ data }: { data: any }) {
         return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     };
 
-    const [filterFinDateBegin, setFilterFinDateBegin] = useState<string>(formatDate(currentYear, 1, 1));
-    const [filterFinDateEnd, setFilterFinDateEnd] = useState<string>(formatDate(currentYear, monthNumber, maxDays));
-    const [filterPieDateBegin, setFilterPieDateBegin] = useState<string>(formatDate(currentYear, 1, 1));
-    const [filterPieDateEnd, setFilterPieDateEnd] = useState<string>(formatDate(currentYear, monthNumber, maxDays));
-    const [filterRevDateBegin, setFilterRevDateBegin] = useState<string>(formatDate(currentYear, 1, 1));
-    const [filterRevDateEnd, setFilterRevDateEnd] = useState<string>(formatDate(currentYear, monthNumber, maxDays));
+    const [filterFinDateBegin, setFilterFinDateBegin] = useState<string>(formatDate(initialYear, 1, 1));
+    const [filterFinDateEnd, setFilterFinDateEnd] = useState<string>(formatDate(initialYear, initialMonth, initialMaxDays));
+    const [filterPieDateBegin, setFilterPieDateBegin] = useState<string>(formatDate(initialYear, 1, 1));
+    const [filterPieDateEnd, setFilterPieDateEnd] = useState<string>(formatDate(initialYear, initialMonth, initialMaxDays));
+    const [filterRevDateBegin, setFilterRevDateBegin] = useState<string>(formatDate(initialYear, 1, 1));
+    const [filterRevDateEnd, setFilterRevDateEnd] = useState<string>(formatDate(initialYear, initialMonth, initialMaxDays));
     const [filterCenterEmploye, setFilterCenterEmploye] = useState<string[]>([]);
 
     const styleBut: string[] = ["1px solid #DEDEDE", "1px solid #D95213"];
@@ -347,9 +344,9 @@ export function Dashboard({ data }: { data: any }) {
         // Log data for debugging
         console.log("Dashboard data updated:", {
             transactionCount: data.transaction.length,
-            year: currentYear,
-            month: monthNumber,
-            days: maxDays
+            year: initialYear,
+            month: initialMonth,
+            days: initialMaxDays
         });
     }, [data, centers, employes]); // Add dependencies
 
@@ -357,9 +354,9 @@ export function Dashboard({ data }: { data: any }) {
         if (!data?.transaction) return;
 
         console.log("Calculating financial items with:", {
-            currentYear,
-            monthNumber,
-            maxDays,
+            year: initialYear,
+            month: initialMonth,
+            days: initialMaxDays,
             transactionCount: data.transaction.length
         });
 
@@ -413,40 +410,40 @@ export function Dashboard({ data }: { data: any }) {
         filterRevDateEnd,
         filterCenterEmploye,
         idButtons,
-        currentYear,
-        monthNumber,
-        maxDays
+        initialYear,
+        initialMonth,
+        initialMaxDays
     ]); // Add all dependencies
 
     useEffect(() => {
         if (!isFilterFinancal) {
-            setFilterFinDateBegin(formatDate(currentYear, monthNumber, 1))
-            setFilterFinDateEnd(formatDate(currentYear, monthNumber, maxDays))
+            setFilterFinDateBegin(formatDate(initialYear, initialMonth, 1))
+            setFilterFinDateEnd(formatDate(initialYear, initialMonth, initialMaxDays))
         } else {
-            setFilterFinDateBegin(formatDate(currentYear, 1, 1))
-            setFilterFinDateEnd(formatDate(currentYear, 12, 31))    
+            setFilterFinDateBegin(formatDate(initialYear, 1, 1))
+            setFilterFinDateEnd(formatDate(initialYear, 12, 31))    
         }
-    }, [isFilterFinancal, currentYear, monthNumber, maxDays])
+    }, [isFilterFinancal, initialYear, initialMonth, initialMaxDays])
 
     useEffect(() => {
         if (!isFilterPiePlot) {
-            setFilterPieDateBegin(formatDate(currentYear, monthNumber, 1))
-            setFilterPieDateEnd(formatDate(currentYear, monthNumber, maxDays))
+            setFilterPieDateBegin(formatDate(initialYear, initialMonth, 1))
+            setFilterPieDateEnd(formatDate(initialYear, initialMonth, initialMaxDays))
         } else {
-            setFilterPieDateBegin(formatDate(currentYear, 1, 1))
-            setFilterPieDateEnd(formatDate(currentYear, 12, 31))    
+            setFilterPieDateBegin(formatDate(initialYear, 1, 1))
+            setFilterPieDateEnd(formatDate(initialYear, 12, 31))    
         }
-    }, [isFilterPiePlot, currentYear, monthNumber, maxDays])
+    }, [isFilterPiePlot, initialYear, initialMonth, initialMaxDays])
 
     useEffect(() => {
         if (!isFilterRevenue) {
-            setFilterRevDateBegin(formatDate(currentYear, monthNumber, 1))
-            setFilterRevDateEnd(formatDate(currentYear, monthNumber, maxDays))
+            setFilterRevDateBegin(formatDate(initialYear, initialMonth, 1))
+            setFilterRevDateEnd(formatDate(initialYear, initialMonth, initialMaxDays))
         } else {
-            setFilterRevDateBegin(formatDate(currentYear, 1, 1))
-            setFilterRevDateEnd(formatDate(currentYear, 12, 31))    
+            setFilterRevDateBegin(formatDate(initialYear, 1, 1))
+            setFilterRevDateEnd(formatDate(initialYear, 12, 31))    
         }
-    }, [isFilterRevenue, currentYear, monthNumber, maxDays])
+    }, [isFilterRevenue, initialYear, initialMonth, initialMaxDays])
 
     // Calculate filtered data whenever data or filters change
     const dataFilteredFinancial = applyFilter(data, "center", financialTransItems, [`${filterFinDateBegin}T00:00:00.000Z`, `${filterFinDateEnd}T00:00:00.000Z`], [])

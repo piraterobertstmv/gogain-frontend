@@ -6,10 +6,8 @@ import { InputDate } from './popup/InputDate';
 import { InputCenter } from './popup/InputCenter';
 import { InputService } from './popup/InputService';
 import { InputClient } from './popup/InputClient';
-import { InputList } from './popup/InputList';
 import { InputTypeOfTransaction } from './popup/InputTypeOfTransaction';
 import { InputIsSupplier } from './popup/InputIsSupplier';
-import { InputWorker } from './popup/InputWorker';
 
 interface BatchTransactionFormProps {
     data: any;
@@ -158,16 +156,8 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
     };
     
     // When service is selected, update cost and taxes
-    const handleServiceChange = (index: number, serviceId: string) => {
-        const service = data.service.find((s: any) => s._id === serviceId);
-        if (service) {
-            const cost = service.cost || 0;
-            const taxes = service.tax || 0;
-            updateTransaction(index, 'service', serviceId);
-            updateTransaction(index, 'cost', cost);
-            updateTransaction(index, 'taxes', taxes);
-            updateTransaction(index, 'totalWithTaxes', calculateTotalWithTaxes(cost, taxes));
-        }
+    const handleServiceChange = (value: string) => {
+        // Add implementation or remove if not needed
     };
     
     return (

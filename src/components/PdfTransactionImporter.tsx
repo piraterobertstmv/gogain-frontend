@@ -247,22 +247,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     "HEALTH INSURANCE EMPLOYEE": "67d816374abe8436385a7ae9",
   };
   
-  // Reset the component state
-  const resetState = () => {
-    setFile(null);
-    setExtractedText([]);
-    setParsedData([]);
-    setMappedData([]);
-    setFieldMappings({});
-    setStep(1);
-    setProgress(0);
-    setError(null);
-    setSuccess(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-  
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
