@@ -156,17 +156,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
     };
     
     // When service is selected, update cost and taxes
-    const handleServiceChange = (index: number, serviceId: string) => {
-        const service = data.service.find((s: any) => s._id === serviceId);
-        if (service) {
-            const cost = service.cost || 0;
-            const taxes = service.tax || 0;
-            updateTransaction(index, 'service', serviceId);
-            updateTransaction(index, 'cost', cost);
-            updateTransaction(index, 'taxes', taxes);
-            updateTransaction(index, 'totalWithTaxes', calculateTotalWithTaxes(cost, taxes));
-        }
-    };
+
     
     return (
         <Modal.Body>
