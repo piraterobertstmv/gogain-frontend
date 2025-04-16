@@ -6,8 +6,10 @@ import { InputDate } from './popup/InputDate';
 import { InputCenter } from './popup/InputCenter';
 import { InputService } from './popup/InputService';
 import { InputClient } from './popup/InputClient';
+import { InputList } from './popup/InputList';
 import { InputTypeOfTransaction } from './popup/InputTypeOfTransaction';
 import { InputIsSupplier } from './popup/InputIsSupplier';
+import { InputWorker } from './popup/InputWorker';
 
 interface BatchTransactionFormProps {
     data: any;
@@ -135,7 +137,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         }
         
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_KEY}transactions/batch`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/transaction/batch`, {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -153,11 +155,6 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
             console.error('Error:', error);
             alert('Failed to save transactions');
         }
-    };
-    
-    // When service is selected, update cost and taxes
-    const handleServiceChange = (value: string) => {
-        // Add implementation or remove if not needed
     };
     
     return (
@@ -286,4 +283,4 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
             </div>
         </Modal.Body>
     );
-} 
+}

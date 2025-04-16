@@ -8,15 +8,13 @@ import { InputIsSupplier } from './popup/InputIsSupplier';
 import { InputWorker } from './popup/InputWorker';
 
 interface DatabaseFormProps {
-    columnName: string;
     data: any;
-    defaultValue: any;
     closePopupFunc: any;
     user: any;
     onSuccess: () => void;
 }
 
-export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, user, onSuccess }: DatabaseFormProps) {
+export function DatabaseForm({ data, closePopupFunc, user, onSuccess }: DatabaseFormProps) {
     const [bodyApi, setBodyApi] = useState<any>({
         worker: user._id,
         typeOfClient: "client",
@@ -55,10 +53,6 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
         } catch (error) {
             console.error('Error:', error);
         }
-    };
-
-    const handleInputChange = (value: string) => {
-        // Implementation here
     };
 
     return (
