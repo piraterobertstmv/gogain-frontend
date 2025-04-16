@@ -394,7 +394,10 @@ export function Dashboard({ data }: { data: any }) {
             employee: employeeData.length
         });
 
-        // Set filtered data
+        const newFinancialTransItems = sumRevenuPerColName(financialData, "center", centers, false);
+        const newPiePlotRevenueItems = sumRevenuPerColNamePerDate(piePlotData, "center", data, idButtons);
+        const newRevenuePerEmployeItems = sumRevenuPerColNamePerDay(employeeData, "worker", data, idButtons);
+
         setFinancialTransItems(centers);
         setPiePlotRevenueItems(centers);
         setRevenuePerEmployeItems(employes);

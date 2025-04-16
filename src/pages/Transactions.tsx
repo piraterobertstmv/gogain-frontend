@@ -106,6 +106,11 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [showPdfImporter, setShowPdfImporter] = useState(false);
 
+    const handleCloseDatabaseForm = () => {
+        setShow(false);
+        reloadData();
+    };
+
     const handleCloseBatchForm = () => {
         setShowBatchModal(false);
         reloadData();

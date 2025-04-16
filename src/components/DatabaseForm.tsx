@@ -3,18 +3,21 @@ import { InputDate } from './popup/InputDate';
 import { InputCenter } from './popup/InputCenter';
 import { InputService } from './popup/InputService';
 import { InputClient } from './popup/InputClient';
+import { InputList } from './popup/InputList';
 import { InputTypeOfTransaction } from './popup/InputTypeOfTransaction';
 import { InputIsSupplier } from './popup/InputIsSupplier';
 import { InputWorker } from './popup/InputWorker';
 
 interface DatabaseFormProps {
+    columnName: string;
     data: any;
+    defaultValue: any;
     closePopupFunc: any;
     user: any;
     onSuccess: () => void;
 }
 
-export function DatabaseForm({ data, closePopupFunc, user, onSuccess }: DatabaseFormProps) {
+export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, user, onSuccess }: DatabaseFormProps) {
     const [bodyApi, setBodyApi] = useState<any>({
         worker: user._id,
         typeOfClient: "client",
