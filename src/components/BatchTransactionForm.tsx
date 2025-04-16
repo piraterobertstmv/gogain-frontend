@@ -135,7 +135,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         }
         
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/transaction/batch`, {
+            const response = await fetch(`${import.meta.env.VITE_API_KEY}transactions/batch`, {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',
@@ -152,6 +152,19 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         } catch (error) {
             console.error('Error:', error);
             alert('Failed to save transactions');
+        }
+    };
+    
+    // When service is selected, update cost and taxes
+    const handleServiceChange = (index: number, serviceId: string) => {
+        const service = data.service.find((s: any) => s._id === serviceId);
+        if (service) {
+            const cost = service.cost || 0;
+            const taxes = service.tax || 0;
+            updateTransaction(index, 'service', serviceId);
+            updateTransaction(index, 'cost', cost);
+            updateTransaction(index, 'taxes', taxes);
+            updateTransaction(index, 'totalWithTaxes', calculateTotalWithTaxes(cost, taxes));
         }
     };
     
@@ -242,7 +255,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
                                 <Form.Control 
                                     type="number" 
                                     value={transaction.cost} 
-                                    onChange={(e) => updateTransaction(index, 'cost', parseFloat(e.target.value) || 0)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTransaction(index, 'cost', parseFloat(e.target.value) || 0)}
                                 />
                             </Form.Group>
                         </div>
@@ -255,7 +268,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
                                 <Form.Control 
                                     type="number" 
                                     value={transaction.taxes} 
-                                    onChange={(e) => updateTransaction(index, 'taxes', parseFloat(e.target.value) || 0)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTransaction(index, 'taxes', parseFloat(e.target.value) || 0)}
                                 />
                             </Form.Group>
                         </div>
@@ -281,4 +294,4 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
             </div>
         </Modal.Body>
     );
-}
+} 
