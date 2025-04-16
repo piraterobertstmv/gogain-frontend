@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Modal, Button, Form, Alert, Table, Spinner, ProgressBar } from 'react-bootstrap';
 import * as XLSX from 'xlsx';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -247,21 +247,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     "HEALTH INSURANCE EMPLOYEE": "67d816374abe8436385a7ae9",
   };
   
-  // Reset the component state
-  const resetState = () => {
-    setFile(null);
-    setExtractedText([]);
-    setParsedData([]);
-    setMappedData([]);
-    setFieldMappings({});
-    setStep(1);
-    setProgress(0);
-    setError(null);
-    setSuccess(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
   
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -352,27 +337,11 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
           const headers = filteredData[0];
           const dataRows = filteredData.slice(1);
           
-          const parsedObjects = dataRows.map((row, rowIdx) => {
+          const parsedObjects = dataRows.map((row, _) => {
             const obj: Record<string, any> = {};
             headers.forEach((header, index) => {
               if (index < row.length) {
-                let value = row[index];
-                
-                // CRITICAL: For dates, keep the exact string value without any conversion
-                // Do not try to convert Excel serial dates - just use the original format
-                if (header.toString().toLowerCase().includes('date')) {
-                  console.log(`Raw date value: ${value}, type: ${typeof value}`);
-                  // Keep track of original value
-                  obj[`original_${header}`] = value;
-                  
-                  // If it's actually already a string, just use it directly
-                  if (typeof value === 'string') {
-                    console.log(`Using date string directly: ${value}`);
-                  }
-                  // No need to convert dates - Excel already shows them correctly
-                }
-                
-                obj[header] = value;
+                obj[header] = row[index];
               } else {
                 obj[header] = '';
               }
@@ -672,7 +641,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       console.log("Headers:", headers);
       console.log("Data rows:", dataRows.length);
       
-      const parsedObjects = dataRows.map((row, rowIdx) => {
+      const parsedObjects = dataRows.map((row, _) => {
         const obj: Record<string, any> = {};
         headers.forEach((header, index) => {
           if (index < row.length) {
@@ -1016,39 +985,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     return validData;
   };
   
-  // Debug function to help with mapping issues
-  const debugEntityMatching = (data: any[]) => {
-    console.log("=== DEBUG: ENTITY MATCHING ===");
-    console.log("First few rows of data:", data.slice(0, 3));
-    
-    // Check unique client names in the data
-    const uniqueClients = [...new Set(data.map((row: any) => {
-      const clientField = fieldMappings.client;
-      return clientField ? row[clientField] : undefined;
-    }).filter((c: any) => c))];
-    
-    console.log("Unique client names in Excel:", uniqueClients);
-    console.log("Available client mappings:", Object.keys(clientMappings));
-    
-    // Check unique center names in the data
-    const uniqueCenters = [...new Set(data.map((row: any) => {
-      const centerField = fieldMappings.center;
-      return centerField ? row[centerField] : undefined;
-    }).filter((c: any) => c))];
-    
-    console.log("Unique center names in Excel:", uniqueCenters);
-    console.log("Available center mappings:", Object.keys(centerMappings));
-    
-    // Check unique service names in the data
-    const uniqueServices = [...new Set(data.map((row: any) => {
-      const serviceField = fieldMappings.service;
-      return serviceField ? row[serviceField] : undefined;
-    }).filter((c: any) => c))];
-    
-    console.log("Unique service names in Excel:", uniqueServices);
-    console.log("Available service mappings:", Object.keys(serviceMappings));
-  };
-  
+  // Debug function removed to fix TS6133 error
+   
   // Helper function for case-insensitive and normalized comparisons
   const normalizeAndCompare = (str1: string, str2: string): boolean => {
     if (!str1 || !str2) return false;
@@ -1460,6 +1398,29 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       setError(`Error exporting to Excel: ${error.message}`);
     }
   };
+  
+  // Reset the component state - Used when reopening the modal
+  const resetState = () => {
+    setFile(null);
+    setExtractedText([]);
+    setParsedData([]);
+    setMappedData([]);
+    setFieldMappings({});
+    setStep(1);
+    setProgress(0);
+    setError(null);
+    setSuccess(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+  
+  // Use resetState when component is shown
+  useEffect(() => {
+    if (show) {
+      resetState();
+    }
+  }, [show]);
   
   return (
     <Modal show={show} onHide={onHide} size="lg">

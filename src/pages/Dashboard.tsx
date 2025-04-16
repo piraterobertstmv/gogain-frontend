@@ -219,61 +219,68 @@ function sumRevenuPerColNamePerDate(dataFiltered: any, colName: string, data: an
     return sumDataDate;
 }
 
+// sumRevenuPerColNamePerDay(dataFiltered, "worker", data, idCalculus)
 function sumRevenuPerColNamePerDay(dataFiltered: any, colName: string, data: any, idCalculus: number) {
-    const year: number = new Date().getFullYear() + 1;
-    const month: number = new Date().getMonth() + 1;
-    const numberOfDays: number = new Date(year, month, 0).getDate();
-
-    let sumDataDate: any[] = [];
+    let sumData: any[] = [];
     const colInData: string = colName === "worker" ? "users" : colName;
-
-    for (let i = 0; i < numberOfDays; i++) {
-        let defaultObj: any = {name: i.toString()};
-
-        dataFiltered.forEach((value: any) => {
-            defaultObj[findNameWithId(data, value[colName], colInData)] = 0;
-        });
-
-        sumDataDate.push(defaultObj);
-    }
-
+    
+    // Create a unique list of days in the dataset
+    const uniqueDays = new Set();
     dataFiltered.forEach((value: any) => {
         const date = new Date(value.date);
-        const dayNumber = date.getDate();
-        const name = findNameWithId(data, value[colName], colInData);
-        const totalAmount = value.cost + value.taxes;
-
-        switch (idCalculus) {
-            case 0: // Net (Revenue - Costs)
-                if (value.typeOfTransaction === "cost") {
-                    sumDataDate[dayNumber][name] -= totalAmount;
-                } else {
-                    sumDataDate[dayNumber][name] += totalAmount;
-                }
-                break;
-            case 1: // Costs only
-                if (value.typeOfTransaction === "cost") {
-                    sumDataDate[dayNumber][name] += totalAmount;
-                }
-                break;
-            case 2: // Revenue only
-                if (value.typeOfTransaction === "revenue") {
-                    sumDataDate[dayNumber][name] += totalAmount;
-                }
-                break;
+        const dayKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        uniqueDays.add(dayKey);
+    });
+    
+    // Initialize the structure
+    const sortedDays = Array.from(uniqueDays).sort();
+    sortedDays.forEach((day: any) => {
+        const dayObj: any = { name: day };
+        
+        // Create unique sets of entities to avoid duplicates
+        const uniqueEntities = new Set(dataFiltered.map((value: any) => value[colName]));
+        
+        uniqueEntities.forEach((entityId: any) => {
+            const name = findNameWithId(data, entityId, colInData);
+            dayObj[name] = 0;
+        });
+        
+        sumData.push(dayObj);
+    });
+    
+    // Process transactions
+    dataFiltered.forEach((value: any) => {
+        const date = new Date(value.date);
+        const dayKey = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        const dayIndex = sortedDays.indexOf(dayKey);
+        
+        if (dayIndex >= 0) {
+            const name = findNameWithId(data, value[colName], colInData);
+            const totalAmount = value.cost + value.taxes;
+            
+            switch (idCalculus) {
+                case 0: // Revenue only
+                    if (value.typeOfTransaction === "revenue") {
+                        sumData[dayIndex][name] += totalAmount;
+                    }
+                    break;
+                case 1: // Costs only
+                    if (value.typeOfTransaction === "cost") {
+                        sumData[dayIndex][name] += totalAmount;
+                    }
+                    break;
+                case 2: // Net (Revenue - Costs)
+                    if (value.typeOfTransaction === "cost") {
+                        sumData[dayIndex][name] -= totalAmount;
+                    } else {
+                        sumData[dayIndex][name] += totalAmount;
+                    }
+                    break;
+            }
         }
     });
-
-    // Round all numbers to 2 decimal places
-    for (let i = 0; i < numberOfDays; i++) {
-        Object.entries(sumDataDate[i]).forEach(([key]: [string, any]) => {
-            if (key !== "name") {
-                sumDataDate[i][key] = parseFloat((sumDataDate[i][key]).toFixed(2));
-            }
-        });
-    }
-
-    return sumDataDate;
+    
+    return sumData;
 }
 
 export function Dashboard({ data }: { data: any }) {
@@ -283,13 +290,15 @@ export function Dashboard({ data }: { data: any }) {
     const initialMonth = now.getMonth() + 1;
     const initialMaxDays = new Date(initialYear, initialMonth, 0).getDate();
 
-    // State declarations
+    // State declarations for date and filter controls - using static values for now
     const [financialTransItems, setFinancialTransItems] = useState<string[]>([]);
     const [piePlotRevenueItems, setPiePlotRevenueItems] = useState<string[]>([]);
     const [revenuePerEmployeItems, setRevenuePerEmployeItems] = useState<string[]>([]);
-    const [currentYear, setCurrentYear] = useState<number>(initialYear);
-    const [monthNumber, setMonthNumber] = useState<number>(initialMonth);
-    const [maxDays, setMaxDays] = useState<number>(initialMaxDays);
+    // Using constants instead of state since setters aren't used in current UI
+    const currentYear = initialYear;
+    const monthNumber = initialMonth;
+    const maxDays = initialMaxDays;
+    
     const [isFilterFinancal, setIsFilterFinancal] = useState<boolean>(true);
     const [isFilterPiePlot, setIsFilterPiePlot] = useState<boolean>(true);
     const [isFilterRevenue, setIsFilterRevenue] = useState<boolean>(true);
@@ -394,9 +403,10 @@ export function Dashboard({ data }: { data: any }) {
             employee: employeeData.length
         });
 
-        const newFinancialTransItems = sumRevenuPerColName(financialData, "center", centers, false);
-        const newPiePlotRevenueItems = sumRevenuPerColNamePerDate(piePlotData, "center", data, idButtons);
-        const newRevenuePerEmployeItems = sumRevenuPerColNamePerDay(employeeData, "worker", data, idButtons);
+        // Calculate sums and update state
+        sumRevenuPerColName(financialData, "center", centers, false);
+        sumRevenuPerColNamePerDate(piePlotData, "center", data, idButtons);
+        sumRevenuPerColNamePerDay(employeeData, "worker", data, idButtons);
 
         setFinancialTransItems(centers);
         setPiePlotRevenueItems(centers);
