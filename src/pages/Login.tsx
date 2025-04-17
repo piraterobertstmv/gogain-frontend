@@ -10,6 +10,9 @@ export function Login({setUser}: {setUser: any}) {
 
     const handleLogin = async (e: any) => {
         e.preventDefault();
+        
+        console.log('Attempting login with:', { email });
+        console.log('API URL:', import.meta.env.VITE_API_KEY);
 
         try {
             const response = await fetch(`${import.meta.env.VITE_API_KEY}users/login`, {
@@ -20,16 +23,20 @@ export function Login({setUser}: {setUser: any}) {
                 body: JSON.stringify({ email, password }),
             });
 
+            console.log('Login response status:', response.status);
+            
+            const responseData = await response.json();
+            console.log('Login response data:', responseData);
+
             if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.message || 'Login failed')
+                throw new Error(responseData.message || 'Login failed')
             }
 
-            const data = await response.json()
-            localStorage.setItem('authToken', data.authToken)
-            setUser(data.user)
+            localStorage.setItem('authToken', responseData.authToken)
+            setUser(responseData.user)
         } catch (error: any) {
-            alert('Login failed')
+            console.error('Login error:', error);
+            alert(`Login failed: ${error.message || 'Unknown error'}`)
         }
     };
 
