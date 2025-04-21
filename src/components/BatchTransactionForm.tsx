@@ -135,7 +135,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         }
         
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_KEY}transactions/batch`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/batch`, {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',

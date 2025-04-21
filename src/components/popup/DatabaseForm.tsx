@@ -169,7 +169,7 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
         const fetchData = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_KEY}${colNameDb}/${defaultValue._id}`, {
+                const response = await fetch(`${import.meta.env.VITE_API_URL}${colNameDb}/${defaultValue._id}`, {
                     method: 'DELETE',
                 });
 
@@ -217,7 +217,7 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return;
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_KEY}${colNameDb}${isModifyOrNew}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}${colNameDb}${isModifyOrNew}`, {
                 method: isModifyOrNew === "" ? "POST" : "PATCH",
                 headers: {
                     'Content-Type': 'application/json'

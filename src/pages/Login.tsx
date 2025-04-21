@@ -12,10 +12,10 @@ export function Login({setUser}: {setUser: any}) {
         e.preventDefault();
         
         console.log('Attempting login with:', { email });
-        console.log('API URL:', import.meta.env.VITE_API_KEY);
+        console.log('API URL:', import.meta.env.VITE_API_URL);
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_KEY}users/login`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}users/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

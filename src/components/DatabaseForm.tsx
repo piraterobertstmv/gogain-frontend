@@ -35,7 +35,7 @@ export function DatabaseForm({ data, closePopupFunc, user, onSuccess }: Database
 
     const handleSubmit = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_KEY}transaction`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}transaction`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

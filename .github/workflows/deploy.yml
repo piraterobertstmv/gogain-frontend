@@ -24,7 +24,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
           
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v1.2

@@ -79,7 +79,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_KEY}transaction/${selectedId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}transaction/${selectedId}`, {
                 method: 'DELETE',
             });
     
