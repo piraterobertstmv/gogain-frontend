@@ -1253,7 +1253,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       });
       
       // Standard API call with no special parameters
-      const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/batch`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/transactions/batch`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -1357,7 +1357,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   // Fetch the last transaction index from the API
   const fetchLastTransactionIndex = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/last-index`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/transactions/last-index`, {
         method: "GET",
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
