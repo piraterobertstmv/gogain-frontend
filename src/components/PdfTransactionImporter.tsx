@@ -29,15 +29,15 @@ try {
   console.error("Error setting up PDF.js worker:", error);
 }
 
-// PdfTransactionImporter interface - updated for Vercel deployment
 interface PdfTransactionImporterProps {
   show: boolean;
   onHide: () => void;
   onSuccess: () => void;
+  data: any;
   user: any;
 }
 
-export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTransactionImporterProps) {
+export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: PdfTransactionImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string[][]>([]);
   const [parsedData, setParsedData] = useState<any[]>([]);
@@ -737,19 +737,36 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
   // Process mappings and prepare data
   const processMapping = () => {
     try {
-      // Check if all required fields are mapped
-      const missingRequiredFields = requiredFields
-        .filter(field => !fieldMappings[field.key] && 
-                         fieldMappings[field.key] !== 0 &&
-                         fieldMappings[field.key] !== 'currentUser' && 
-                         fieldMappings[field.key] !== 'defaultRevenue' &&
-                         fieldMappings[field.key] !== 'defaultCost')
-        .map(field => field.label);
+      // Check if required fields are mapped
+      const requiredFields = ['date', 'center', 'client', 'cost'];
+      const missingRequiredFields = requiredFields.filter(field => {
+        const mapping = fieldMappings[field];
+        // Field could be directly mapped or have a special value
+        return !mapping && mapping !== 0 && 
+               mapping !== 'currentUser' && 
+               mapping !== 'defaultRevenue' && 
+               mapping !== 'defaultCost';
+      });
+      
+      // For service, we'll provide defaults if not mapped, so exclude it from required fields check
+      // but notify the user that we're using defaults
+      let serviceWarning = false;
+      if (!fieldMappings['service'] && fieldMappings['service'] !== 0) {
+        console.log("Service field not mapped - will use defaults");
+        serviceWarning = true;
+      }
       
       if (missingRequiredFields.length > 0) {
         setError(`Missing required field mappings: ${missingRequiredFields.join(', ')}`);
         return;
       }
+      
+      // Show info about index auto-numbering and service defaults if needed
+      let infoMessage = "Processing data... Transaction indexes will be auto-assigned sequentially from the last existing index.";
+      if (serviceWarning) {
+        infoMessage += " Service field not mapped - will use default services.";
+      }
+      setSuccess(infoMessage);
       
       // Prepare the transaction data
       const preparedData = prepareTransactionData();
@@ -772,7 +789,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
       // Store original values for necessary display
       const originalValues: Record<string, string> = {};
       
-      // Always set index automatically, regardless of field mappings
+      // Always set index automatically based on lastTransactionIndex
+      // This ensures indexes are sequential and continue from the last one in the database
       transaction.index = lastTransactionIndex + 1 + rowIndex;
       
       // Map fields based on fieldMappings - only include fields that are explicitly mapped
@@ -794,6 +812,21 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
         }
         else if (columnIndexOrSpecial === 'defaultCost') {
           transaction[field] = 'cost';
+        }
+        // If service isn't mapped, use a default
+        else if (field === 'service' && columnIndexOrSpecial === '') {
+          // Try to find a default service from data
+          const defaultService = data.service?.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
+          if (defaultService) {
+            transaction[field] = defaultService._id;
+            transaction.originalServiceName = defaultService.name;
+          } else if (data.service?.length > 0) {
+            // Use the first available service as fallback
+            transaction[field] = data.service[0]._id;
+            transaction.originalServiceName = data.service[0].name;
+          } else {
+            console.warn("No service mapping and no default service available");
+          }
         }
         // Normal field mapping
         else {
@@ -894,6 +927,20 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
       // This ensures we don't add fields that aren't in the specified table
       if (!transaction.createdBy) transaction.createdBy = user._id;
       
+      // Default service if not set by any of the above methods
+      if (!transaction.service) {
+        // Attempt to find a standard service as fallback
+        const defaultService = data.service?.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
+        if (defaultService) {
+          transaction.service = defaultService._id;
+          transaction.originalServiceName = defaultService.name;
+        } else if (data.service?.length > 0) {
+          // Use the first available service as last resort
+          transaction.service = data.service[0]._id;
+          transaction.originalServiceName = data.service[0].name;
+        }
+      }
+      
       return transaction;
     });
     
@@ -935,125 +982,68 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
     return false;
   };
   
-  // Update the validateAndTransformReferences function to store original entity names
+  // Update the validateAndTransformReferences function to handle auto-assigned service IDs
   const validateAndTransformReferences = (transaction: any) => {
     try {
       // Make a copy to avoid mutating the original
       const transformed = { ...transaction };
       
-      // Define a hardcoded map for problem IDs
-      const hardcodedNames: Record<string, string> = {
-        // Original mappings (67... prefix IDs)
-        "67d814a15d16925ff8bd713c": "JORGE GOENAGA PEREZ",
-        "67d814a15d16925ff8bd7158": "EPSILOG SARL",
-        "67d814a15d16925ff8bd715a": "MACSF-ASSU",
-        "67d814a15d16925ff8bd715c": "C.A.R.P.I.M.K.O",
-        "67d814a15d16925ff8bd715e": "ADIS",
-        "67d814a15d16925ff8bd7160": "GC RE DOCTOLIB",
-        "67d814a15d16925ff8bd7162": "Loan Payment",
-        "67d814a15d16925ff8bd7164": "Matthieu Monnot",
-        "67d814a15d16925ff8bd716c": "Free Pro",
-        "67d814a15d16925ff8bd7170": "URSSAF D'ILE DE FRANCE",
-        "67d814a15d16925ff8bd7172": "Jazz Pro Subscription Fee",
-        "67d814a15d16925ff8bd7174": "SOGECAP",
-        "67d814a15d16925ff8bd7180": "GIE AG2R REUNICA",
-        "67d814a15d16925ff8bd7182": "ONEY BANQUE ACCORD",
-        "67d814a15d16925ff8bd7184": "AXA / SOGAREP",
+      // Client validation and transformation
+      if (transformed.client && !isValidObjectId(transformed.client)) {
+        // Try to find client by name in our database
+        const matchedClient = data.client?.find((c: any) => {
+          const fullName = `${c.firstName} ${c.lastName}`.trim();
+          return normalizeAndCompare(fullName, transformed.client) || 
+                 normalizeAndCompare(c.name || '', transformed.client);
+        });
         
-        // IDs from screenshot (e7... prefix)
-        "e7d814a15d16925ff8bd713c": "JORGE GOENAGA PEREZ",
-        "e7e814a15d16925ff8bd7190": "Account Maintenance Fee",
-        "e7e814a15d16925ff8bd7191": "TPE Fixe IP + Pinpad",
-        "e7e814a15d16925ff8bd7192": "Debit Interest and Overdraft Fees",
-        "e7e814a15d16925ff8bd7193": "RITM LA FONTAINE",
-        "e7e814a15d16925ff8bd7194": "Mauro Navarro",
-        "e7e814a15d16925ff8bd7195": "Ana STEFANOVIC",
-        "e7e814a15d16925ff8bd7196": "Card Transaction",
-        "e7e814a15d16925ff8bd7197": "KARAPASS COURTAGE",
-        "e7e814a15d16925ff8bd7198": "SOFINCO AUTO MOTO LOISIRS",
-        "e7e814a15d16925ff8bd7199": "GIEPS-GIE DE PREVOYANCE SOCIALE",
-        "e7e814a15d16925ff8bd719a": "Quietis Pro Renewal",
-        "e7e814a15d16925ff8bd719b": "GG IMMOBILIER",
-        "e7e814a15d16925ff8bd719c": "DIAC SA"
-      };
+        if (matchedClient) {
+          // Store original name and update the ID
+          transformed.originalClientName = transformed.client;
+          transformed.client = matchedClient._id;
+        } else {
+          console.warn(`No matching client found for: ${transformed.client}`);
+        }
+      }
       
-      // Handle client reference - IMPORTANT: ALWAYS preserve originalClientName
-      if (transformed.client) {
-        // Check if client is an ObjectID and we have it in our hardcoded map
-        if (isValidObjectId(transformed.client) && hardcodedNames[transformed.client]) {
-          console.log(`Using hardcoded name for client ID ${transformed.client}: ${hardcodedNames[transformed.client]}`);
-          transformed.originalClientName = hardcodedNames[transformed.client];
-        }
-        // Make sure we have originalClientName
-        else if (!transformed.originalClientName) {
-          console.log(`No originalClientName for client ${transformed.client}, looking up...`);
-          // Try mapping in clientMappings
-          for (const [name, id] of Object.entries(clientMappings)) {
-            if (id === transformed.client) {
-              transformed.originalClientName = name;
-              console.log(`Found name '${name}' for client ID ${transformed.client} in clientMappings`);
-              break;
-            }
-          }
-          
-          // If not found, use what we have
-          if (!transformed.originalClientName) {
-            transformed.originalClientName = transformed.client;
-          }
-        }
+      // Center validation and transformation
+      if (transformed.center && !isValidObjectId(transformed.center)) {
+        // Try to find center by name
+        const matchedCenter = data.center?.find((c: any) => 
+          normalizeAndCompare(c.name, transformed.center)
+        );
         
-        // Now handle conversion to ObjectId if needed
-        if (!isValidObjectId(transformed.client)) {
-          console.log(`Converting client name '${transformed.client}' to ObjectID if possible`);
-          // Try to find matching client in mappings
-          const clientKey = Object.keys(clientMappings).find(key => 
-            normalizeAndCompare(key, transformed.client || transformed.originalClientName)
-          );
-          
-          if (clientKey) {
-            transformed.client = clientKey;
-          }
+        if (matchedCenter) {
+          // Store original name and update the ID
+          transformed.originalCenterName = transformed.center;
+          transformed.center = matchedCenter._id;
+        } else {
+          console.warn(`No matching center found for: ${transformed.center}`);
         }
       }
       
-      // Handle center reference
-      if (transformed.center) {
-        if (isValidObjectId(transformed.center)) {
-          transformed.center = transformed.center;
+      // Service validation and transformation
+      // Only try to match if the service isn't already an ObjectId and we have an original service name
+      if (transformed.service && !isValidObjectId(transformed.service) && transformed.originalServiceName) {
+        // Try to find service by name
+        const matchedService = data.service?.find((s: any) => 
+          normalizeAndCompare(s.name, transformed.originalServiceName)
+        );
+        
+        if (matchedService) {
+          // Update to use the matched service ID
+          transformed.service = matchedService._id;
         } else {
-          console.log(`Converting center name '${transformed.center}' to ObjectID if possible`);
-          // Try to find matching center in mappings
-          const centerKey = Object.keys(centerMappings).find(key => 
-            normalizeAndCompare(key, transformed.center || transformed.originalCenterName)
-          );
-          
-          if (centerKey) {
-            transformed.center = centerKey;
-          }
+          console.warn(`No matching service found for: ${transformed.originalServiceName}`);
         }
       }
       
-      // Handle service reference
-      if (transformed.service) {
-        if (isValidObjectId(transformed.service)) {
-          transformed.service = transformed.service;
-        } else {
-          console.log(`Converting service name '${transformed.service}' to ObjectID if possible`);
-          // Try to find matching service in mappings
-          const serviceKey = Object.keys(serviceMappings).find(key => 
-            normalizeAndCompare(key, transformed.service || transformed.originalServiceName)
-          );
-          
-          if (serviceKey) {
-            transformed.service = serviceKey;
-          }
-        }
-      }
+      // Service should already be set to a valid default if not mapped or found
       
       return transformed;
-    } catch (err: any) {
-      console.error("Error transforming transaction:", err);
-      return transaction;
+    } catch (error: any) {
+      console.error("Error validating references:", error, transaction);
+      return transaction; // Return original if there's an error
     }
   };
   
@@ -1206,7 +1196,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
       // Final validation of transactions
       const finalValidTransactions = mappedData.filter((transaction: any) => {
         // Ensure required fields are present
-        return transaction.date && transaction.client && transaction.center && transaction.service;
+        return transaction.date && transaction.client && transaction.center && 
+               transaction.service && transaction.index;
       });
       
       if (finalValidTransactions.length === 0) {
@@ -1220,6 +1211,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
       const backendReadyTransactions = finalValidTransactions.map(transaction => {
         // Create a new object to avoid mutating the original
         const backendTransaction = { ...transaction };
+        
+        // Ensure index is included and is a number
+        backendTransaction.index = Number(backendTransaction.index);
         
         // Convert date from DD/MM/YYYY to ISO format YYYY-MM-DD if needed
         if (backendTransaction.date && typeof backendTransaction.date === 'string') {
@@ -1252,8 +1246,10 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
         return backendTransaction;
       });
       
+      console.log("Backend ready transactions:", backendReadyTransactions);
+      
       // Standard API call with no special parameters
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/transactions/batch`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/batch`, {
         method: "POST",
         headers: {
           'Content-Type': 'application/json',
@@ -1357,7 +1353,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTra
   // Fetch the last transaction index from the API
   const fetchLastTransactionIndex = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/transactions/last-index`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/last-index`, {
         method: "GET",
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
