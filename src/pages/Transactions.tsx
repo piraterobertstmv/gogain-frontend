@@ -79,7 +79,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/transaction/${selectedId}`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}transaction/${selectedId}`, {
                 method: 'DELETE',
             });
     
@@ -170,12 +170,16 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 user={user}
             />
         </Modal>
+        
+        {/* PDF Transaction Importer with all required props explicitly defined */}
         <PdfTransactionImporter 
             show={showPdfImporter}
             onHide={handleClosePdfImporter}
             onSuccess={reloadData}
+            data={data}
             user={user}
         />
+        
         <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
     </div>
     </>
