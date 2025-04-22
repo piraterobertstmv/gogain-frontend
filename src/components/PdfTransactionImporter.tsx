@@ -29,12 +29,26 @@ try {
   console.error("Error setting up PDF.js worker:", error);
 }
 
+// Updated interface with more specific types to help Vercel build process
 interface PdfTransactionImporterProps {
   show: boolean;
   onHide: () => void;
   onSuccess: () => void;
-  data: any;
-  user: any;
+  data: {
+    transaction?: any[];
+    client?: any[];
+    users?: any[];
+    center?: any[];
+    service?: any[];
+    costs?: any[];
+    [key: string]: any;
+  };
+  user: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    [key: string]: any;
+  };
 }
 
 export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: PdfTransactionImporterProps) {
@@ -816,16 +830,14 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         // If service isn't mapped, use a default
         else if (field === 'service' && columnIndexOrSpecial === '') {
           // Try to find a default service from data
-          const defaultService = data.service?.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
+          const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
           if (defaultService) {
             transaction[field] = defaultService._id;
             transaction.originalServiceName = defaultService.name;
-          } else if (data.service?.length > 0) {
+          } else if (data.service && data.service.length > 0) {
             // Use the first available service as fallback
             transaction[field] = data.service[0]._id;
             transaction.originalServiceName = data.service[0].name;
-          } else {
-            console.warn("No service mapping and no default service available");
           }
         }
         // Normal field mapping
@@ -930,11 +942,11 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       // Default service if not set by any of the above methods
       if (!transaction.service) {
         // Attempt to find a standard service as fallback
-        const defaultService = data.service?.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
+        const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
         if (defaultService) {
           transaction.service = defaultService._id;
           transaction.originalServiceName = defaultService.name;
-        } else if (data.service?.length > 0) {
+        } else if (data.service && data.service.length > 0) {
           // Use the first available service as last resort
           transaction.service = data.service[0]._id;
           transaction.originalServiceName = data.service[0].name;
