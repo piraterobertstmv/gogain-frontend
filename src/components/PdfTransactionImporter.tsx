@@ -1522,29 +1522,56 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 <h5>Map Fields</h5>
                 <p className="text-muted">Select which column contains each field shown in the transaction table</p>
                 
-                {requiredFields.map(field => (
-                  <Form.Group className="mb-3" key={field.key}>
-                    <Form.Label>{field.label}</Form.Label>
-                    <Form.Select
-                      value={fieldMappings[field.key]?.toString() || ''}
-                      onChange={(e) => updateFieldMapping(field.key, e.target.value)}
-                    >
-                      <option value="">-- Select Column --</option>
-                      {extractedText[0]?.map((header, index) => (
-                        <option key={index} value={index}>{header}</option>
-                      ))}
-                      {field.key === 'worker' && (
-                        <option value="currentUser">Use Current User ({user.firstName} {user.lastName})</option>
-                      )}
-                      {field.key === 'typeOfTransaction' && (
-                        <>
-                          <option value="defaultRevenue">All Revenue</option>
-                          <option value="defaultCost">All Cost</option>
-                        </>
-                      )}
-                    </Form.Select>
-                  </Form.Group>
-                ))}
+                {requiredFields.map(field => {
+                  // Special handling for service field to make it more visible
+                  if (field.key === 'service') {
+                    return (
+                      <Form.Group className="mb-3" key={field.key}>
+                        <Form.Label>
+                          {field.label} <span className="text-muted">(Optional - will use default service if not mapped)</span>
+                        </Form.Label>
+                        <Form.Select
+                          value={fieldMappings[field.key]?.toString() || ''}
+                          onChange={(e) => updateFieldMapping(field.key, e.target.value)}
+                          className="mb-2"
+                        >
+                          <option value="">-- Use Default KINÉSITHÉRAPIE (30min) --</option>
+                          {extractedText[0]?.map((header, index) => (
+                            <option key={index} value={index}>{header}</option>
+                          ))}
+                        </Form.Select>
+                        <Form.Text className="text-info">
+                          Not mapping this field will use the default service "KINÉSITHÉRAPIE (30min)" for all transactions
+                        </Form.Text>
+                      </Form.Group>
+                    );
+                  }
+                  
+                  // For all other fields
+                  return (
+                    <Form.Group className="mb-3" key={field.key}>
+                      <Form.Label>{field.label}</Form.Label>
+                      <Form.Select
+                        value={fieldMappings[field.key]?.toString() || ''}
+                        onChange={(e) => updateFieldMapping(field.key, e.target.value)}
+                      >
+                        <option value="">-- Select Column --</option>
+                        {extractedText[0]?.map((header, index) => (
+                          <option key={index} value={index}>{header}</option>
+                        ))}
+                        {field.key === 'worker' && (
+                          <option value="currentUser">Use Current User ({user.firstName} {user.lastName})</option>
+                        )}
+                        {field.key === 'typeOfTransaction' && (
+                          <>
+                            <option value="defaultRevenue">All Revenue</option>
+                            <option value="defaultCost">All Cost</option>
+                          </>
+                        )}
+                      </Form.Select>
+                    </Form.Group>
+                  );
+                })}
                 
                 <div className="d-flex justify-content-between mt-4">
                   <Button variant="secondary" onClick={() => setStep(1)}>
@@ -1581,41 +1608,41 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       </Modal.Body>
       
       <Modal.Footer>
-        <Button 
-          variant="secondary" 
-          onClick={onHide}
-        >
-          Cancel
-        </Button>
-
         {step === 1 && (
-          <Button 
-            variant="primary" 
-            onClick={file ? parsePdf : () => {}}
-            disabled={!file || isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Spinner
-                  as="span"
-                  animation="border"
-                  size="sm"
-                  role="status"
-                  aria-hidden="true"
-                  className="me-2"
-                />
-                Processing...
-              </>
-            ) : 'Process PDF'}
-          </Button>
+          <>
+            <Button 
+              variant="secondary" 
+              onClick={onHide}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="primary" 
+              onClick={file ? parsePdf : () => {}}
+              disabled={!file || isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    role="status"
+                    aria-hidden="true"
+                    className="me-2"
+                  />
+                  Processing...
+                </>
+              ) : 'Process PDF'}
+            </Button>
+          </>
         )}
 
         {step === 2 && (
-          <div className="d-flex">
+          <>
             <Button 
               variant="secondary" 
               onClick={() => setStep(1)}
-              className="me-2"
             >
               Back
             </Button>
@@ -1625,15 +1652,14 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
             >
               Continue to Review
             </Button>
-          </div>
+          </>
         )}
 
         {step === 3 && (
-          <div className="d-flex">
+          <>
             <Button 
               variant="secondary" 
               onClick={() => setStep(2)}
-              className="me-2"
               disabled={!!success}
             >
               Back to Mapping
@@ -1666,7 +1692,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 `Import ${mappedData.length} Transactions`
               )}
             </Button>
-          </div>
+          </>
         )}
       </Modal.Footer>
     </Modal>
