@@ -33,11 +33,10 @@ interface PdfTransactionImporterProps {
   show: boolean;
   onHide: () => void;
   onSuccess: () => void;
-  data: any;
   user: any;
 }
 
-export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: PdfTransactionImporterProps) {
+export function PdfTransactionImporter({ show, onHide, onSuccess, user }: PdfTransactionImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string[][]>([]);
   const [parsedData, setParsedData] = useState<any[]>([]);

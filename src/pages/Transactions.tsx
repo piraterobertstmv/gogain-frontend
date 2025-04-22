@@ -174,7 +174,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             show={showPdfImporter}
             onHide={handleClosePdfImporter}
             onSuccess={reloadData}
-            data={data}
             user={user}
         />
         <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
