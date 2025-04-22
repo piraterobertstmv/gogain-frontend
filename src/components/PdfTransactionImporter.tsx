@@ -29,6 +29,7 @@ try {
   console.error("Error setting up PDF.js worker:", error);
 }
 
+// PdfTransactionImporter interface - updated for Vercel deployment
 interface PdfTransactionImporterProps {
   show: boolean;
   onHide: () => void;
