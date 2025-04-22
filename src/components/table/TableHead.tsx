@@ -6,7 +6,6 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
     if (column === "transaction") {
         // Define the correct column order for transactions
         const orderedColumns = [
-            "index", 
             "date", 
             "center", 
             "client", 

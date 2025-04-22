@@ -200,7 +200,6 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
     // For transaction tables, use the defined column order
     if (column === "transaction") {
         const orderedColumns = [
-            "index", 
             "date", 
             "center", 
             "client", 
