@@ -752,7 +752,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   const processMapping = () => {
     try {
       // Check if required fields are mapped
-      const requiredFields = ['date', 'center', 'client', 'cost'];
+      const requiredFields = ['date', 'center', 'client', 'cost', 'service'];
       const missingRequiredFields = requiredFields.filter(field => {
         const mapping = fieldMappings[field];
         // Field could be directly mapped or have a special value
@@ -762,24 +762,13 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                mapping !== 'defaultCost';
       });
       
-      // For service, we'll provide defaults if not mapped, so exclude it from required fields check
-      // but notify the user that we're using defaults
-      let serviceWarning = false;
-      if (!fieldMappings['service'] && fieldMappings['service'] !== 0) {
-        console.log("Service field not mapped - will use defaults");
-        serviceWarning = true;
-      }
-      
       if (missingRequiredFields.length > 0) {
         setError(`Missing required field mappings: ${missingRequiredFields.join(', ')}`);
         return;
       }
       
-      // Show info about index auto-numbering and service defaults if needed
-      let infoMessage = "Processing data... Transaction indexes will be auto-assigned sequentially from the last existing index.";
-      if (serviceWarning) {
-        infoMessage += " Service field not mapped - will use default services.";
-      }
+      // Show info about index auto-numbering
+      const infoMessage = "Processing data... Transaction indexes will be auto-assigned sequentially from the last existing index.";
       setSuccess(infoMessage);
       
       // Prepare the transaction data
@@ -829,16 +818,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         }
         // If service isn't mapped, use a default
         else if (field === 'service' && columnIndexOrSpecial === '') {
-          // Try to find a default service from data
-          const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
-          if (defaultService) {
-            transaction[field] = defaultService._id;
-            transaction.originalServiceName = defaultService.name;
-          } else if (data.service && data.service.length > 0) {
-            // Use the first available service as fallback
-            transaction[field] = data.service[0]._id;
-            transaction.originalServiceName = data.service[0].name;
-          }
+          // Service is now required, so we shouldn't reach this code
+          console.warn("Service field must be mapped from the file");
         }
         // Normal field mapping
         else {
@@ -938,20 +919,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       // Set only essential default values if not mapped (minimal approach)
       // This ensures we don't add fields that aren't in the specified table
       if (!transaction.createdBy) transaction.createdBy = user._id;
-      
-      // Default service if not set by any of the above methods
-      if (!transaction.service) {
-        // Attempt to find a standard service as fallback
-        const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
-        if (defaultService) {
-          transaction.service = defaultService._id;
-          transaction.originalServiceName = defaultService.name;
-        } else if (data.service && data.service.length > 0) {
-          // Use the first available service as last resort
-          transaction.service = data.service[0]._id;
-          transaction.originalServiceName = data.service[0].name;
-        }
-      }
       
       return transaction;
     });
@@ -1540,20 +1507,20 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                     return (
                       <Form.Group className="mb-3" key={field.key}>
                         <Form.Label>
-                          {field.label} <span className="text-muted">(Optional - will use default service if not mapped)</span>
+                          {field.label} <span className="text-muted">(Required - must be selected from file)</span>
                         </Form.Label>
                         <Form.Select
                           value={fieldMappings[field.key]?.toString() || ''}
                           onChange={(e) => updateFieldMapping(field.key, e.target.value)}
                           className="mb-2"
                         >
-                          <option value="">-- Use Default KINÉSITHÉRAPIE (30min) --</option>
-                          {extractedText[0]?.map((header, index) => (
+                          <option value="">-- Select Column from File --</option>
+                          {extractedText[0]?.filter(header => header && header.trim() !== '').map((header, index) => (
                             <option key={index} value={index}>{header}</option>
                           ))}
                         </Form.Select>
                         <Form.Text className="text-info">
-                          Not mapping this field will use the default service "KINÉSITHÉRAPIE (30min)" for all transactions
+                          Select the column that contains service names in your PDF/Excel file
                         </Form.Text>
                       </Form.Group>
                     );
