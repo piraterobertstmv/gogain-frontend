@@ -197,6 +197,72 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
     const backgroundColors: string[] = ["#fff", "#eee"]
 
+    // For transaction tables, use the defined column order
+    if (column === "transaction") {
+        const orderedColumns = [
+            "index", 
+            "date", 
+            "center", 
+            "client", 
+            "cost", // amount with taxes
+            // amount without taxes is added dynamically after cost
+            "worker", 
+            "taxes", 
+            "typeOfTransaction", 
+            "typeOfMovement", 
+            "frequency", 
+            "typeOfClient", 
+            "service"
+        ];
+
+        return (
+            <>
+                {(user.isAdmin || user._id == dataRow.worker) && (
+                    <tr onClick={handleShow}>
+                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                            <input
+                                type="checkbox"
+                                checked={deleteLines.includes(dataRow._id)}
+                                onChange={() => deleteFunction(dataRow._id)}
+                                style={{ cursor: "pointer", width: "1vw" }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </td>
+                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
+                        
+                        {orderedColumns.map((key, index) => {
+                            if (deleteColumns.includes(key)) return null;
+                            
+                            const value = dataRow[key];
+                            
+                            return (
+                                <React.Fragment key={`cell-${index}`}>
+                                    <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                        {findCorrectValue(key, value)}
+                                    </td>
+
+                                    {key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                            {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
+                                        </td>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </tr>
+                )}
+
+                <Modal show={show} onHide={handleClose}>
+                    <Modal.Header closeButton>
+                        <Modal.Title>Add {column}</Modal.Title>
+                    </Modal.Header>
+                    <DatabaseForm columnName={column} data={data} defaultValue={findCorrectDefaultValue()} closePopupFunc={handleClose} user={user}/>
+                </Modal>
+            </>
+        );
+    }
+
+    // For non-transaction tables, use the original logic
     return (
     <>
         {(column != "transaction" || (user.isAdmin || user._id == dataRow.worker)) && (
