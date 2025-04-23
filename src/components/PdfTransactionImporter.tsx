@@ -752,7 +752,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   const processMapping = () => {
     try {
       // Check if required fields are mapped
-      const requiredFields = ['date', 'center', 'client', 'cost', 'service'];
+      const requiredFields = ['date', 'center', 'client', 'cost'];
       const missingRequiredFields = requiredFields.filter(field => {
         const mapping = fieldMappings[field];
         // Field could be directly mapped or have a special value
@@ -762,13 +762,24 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                mapping !== 'defaultCost';
       });
       
+      // For service, we'll provide defaults if not mapped, so exclude it from required fields check
+      // but notify the user that we're using defaults
+      let serviceWarning = false;
+      if (!fieldMappings['service'] && fieldMappings['service'] !== 0) {
+        console.log("Service field not mapped - will use defaults");
+        serviceWarning = true;
+      }
+      
       if (missingRequiredFields.length > 0) {
         setError(`Missing required field mappings: ${missingRequiredFields.join(', ')}`);
         return;
       }
       
-      // Show info about index auto-numbering
-      const infoMessage = "Processing data... Transaction indexes will be auto-assigned sequentially from the last existing index.";
+      // Show info about index auto-numbering and service defaults if needed
+      let infoMessage = "Processing data... Transaction indexes will be auto-assigned sequentially from the last existing index.";
+      if (serviceWarning) {
+        infoMessage += " Service field not mapped - will use default services.";
+      }
       setSuccess(infoMessage);
       
       // Prepare the transaction data
@@ -818,8 +829,16 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         }
         // If service isn't mapped, use a default
         else if (field === 'service' && columnIndexOrSpecial === '') {
-          // Service is now required, so we shouldn't reach this code
-          console.warn("Service field must be mapped from the file");
+          // Try to find a default service from data
+          const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
+          if (defaultService) {
+            transaction[field] = defaultService._id;
+            transaction.originalServiceName = defaultService.name;
+          } else if (data.service && data.service.length > 0) {
+            // Use the first available service as fallback
+            transaction[field] = data.service[0]._id;
+            transaction.originalServiceName = data.service[0].name;
+          }
         }
         // Normal field mapping
         else {
@@ -920,6 +939,20 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       // This ensures we don't add fields that aren't in the specified table
       if (!transaction.createdBy) transaction.createdBy = user._id;
       
+      // Default service if not set by any of the above methods
+      if (!transaction.service) {
+        // Attempt to find a standard service as fallback
+        const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
+        if (defaultService) {
+          transaction.service = defaultService._id;
+          transaction.originalServiceName = defaultService.name;
+        } else if (data.service && data.service.length > 0) {
+          // Use the first available service as last resort
+          transaction.service = data.service[0]._id;
+          transaction.originalServiceName = data.service[0].name;
+        }
+      }
+      
       return transaction;
     });
     
@@ -942,8 +975,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     return validData;
   };
   
-  // Debug function removed to fix TS6133 error
-   
   // Helper function for case-insensitive and normalized comparisons
   const normalizeAndCompare = (str1: string, str2: string): boolean => {
     if (!str1 || !str2) return false;
@@ -1023,6 +1054,50 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     } catch (error: any) {
       console.error("Error validating references:", error, transaction);
       return transaction; // Return original if there's an error
+    }
+  };
+  
+  // Helper function for field selector rendering
+  const renderFieldSelector = (fieldKey: string) => {
+    // Filter out empty headers
+    const columnOptions = extractedText[0]?.map((header, index) => (
+      header && header.trim() !== "" ? 
+        <option key={index} value={index}>{header}</option> :
+        null
+    ));
+    
+    // Special rendering for different field types
+    if (fieldKey === 'typeOfTransaction') {
+      return (
+        <>
+          <option value="">-- Select Column --</option>
+          {columnOptions}
+          <option value="defaultRevenue">All Revenue</option>
+          <option value="defaultCost">All Cost</option>
+        </>
+      );
+    } else if (fieldKey === 'worker') {
+      return (
+        <>
+          <option value="">-- Select Column --</option>
+          {columnOptions}
+          <option value="currentUser">Use Current User ({user.firstName} {user.lastName})</option>
+        </>
+      );
+    } else if (fieldKey === 'service') {
+      return (
+        <>
+          <option value="">-- Use Default KINÉSITHÉRAPIE (30min) --</option>
+          {columnOptions}
+        </>
+      );
+    } else {
+      return (
+        <>
+          <option value="">-- Select Column --</option>
+          {columnOptions}
+        </>
+      );
     }
   };
   
@@ -1456,7 +1531,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                   <thead>
                     <tr>
                       {extractedText[0]?.map((header, index) => (
-                        <th key={index}>{header}</th>
+                        header && header.trim() !== "" ? 
+                          <th key={index}>{header}</th> :
+                          <th key={index}>Column {index+1}</th>
                       ))}
                     </tr>
                   </thead>
@@ -1507,20 +1584,17 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                     return (
                       <Form.Group className="mb-3" key={field.key}>
                         <Form.Label>
-                          {field.label} <span className="text-muted">(Required - must be selected from file)</span>
+                          {field.label} <span className="text-muted">(Select column containing service information)</span>
                         </Form.Label>
                         <Form.Select
                           value={fieldMappings[field.key]?.toString() || ''}
                           onChange={(e) => updateFieldMapping(field.key, e.target.value)}
                           className="mb-2"
                         >
-                          <option value="">-- Select Column from File --</option>
-                          {extractedText[0]?.filter(header => header && header.trim() !== '').map((header, index) => (
-                            <option key={index} value={index}>{header}</option>
-                          ))}
+                          {renderFieldSelector(field.key)}
                         </Form.Select>
                         <Form.Text className="text-info">
-                          Select the column that contains service names in your PDF/Excel file
+                          Select the column that contains service names, or use the default service if not available in your data
                         </Form.Text>
                       </Form.Group>
                     );
@@ -1534,19 +1608,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                         value={fieldMappings[field.key]?.toString() || ''}
                         onChange={(e) => updateFieldMapping(field.key, e.target.value)}
                       >
-                        <option value="">-- Select Column --</option>
-                        {extractedText[0]?.map((header, index) => (
-                          <option key={index} value={index}>{header}</option>
-                        ))}
-                        {field.key === 'worker' && (
-                          <option value="currentUser">Use Current User ({user.firstName} {user.lastName})</option>
-                        )}
-                        {field.key === 'typeOfTransaction' && (
-                          <>
-                            <option value="defaultRevenue">All Revenue</option>
-                            <option value="defaultCost">All Cost</option>
-                          </>
-                        )}
+                        {renderFieldSelector(field.key)}
                       </Form.Select>
                     </Form.Group>
                   );
