@@ -14,9 +14,7 @@ export function InputService({ name, addOrModifyValueInBodyApi, data, defaultVal
         <div className="mb-3">
             <label htmlFor="transactionService" className="form-label">{formatString(name)}</label>
             <select value={service} className="form-select" onChange={(e) => {modifyService(e)}} id="transactionService" aria-label="transactionService">
-                {defaultValue === "" && (
-                    <option value=""></option>
-                )}
+                <option value="">-- Select Service --</option>
                 {servicesAvailable.map((service :any) => (
                     user.services.includes(service._id) || user.isAdmin ? (
                         <option key={service._id} value={service._id}>{service.name}</option>

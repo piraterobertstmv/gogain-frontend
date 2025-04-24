@@ -87,7 +87,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   const optionalFields: { key: string, label: string }[] = [];
   
   // Mappings from entity names to ObjectIDs
-  const clientMappings = {
+  const clientMappings: Record<string, string> = {
     "JORGE GOENAGA PEREZ": "67d814a15d16925ff8bd713c",
     "EPSILOG SARL": "67d814a15d16925ff8bd7158",
     "MACSF-ASSU-": "67d814a15d16925ff8bd715a",
@@ -150,7 +150,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     "e7e814a15d16925ff8bd719c": "LEASING VOITURE Fee"
   };
   
-  const centerMappings = {
+  const centerMappings: Record<string, string> = {
     "BOSQUET": "66eb4e85615c83d533d03876",
     "CASA PADEL 1": "66eb4e8d615c83d533d03879",
     "CASA PADEL 2": "66eb4e96615c83d533d0387b",
@@ -162,7 +162,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     "DIGITAL (GAIN PERFORMANCE)": "67421ed5c56bc42b28c7670a",
   };
   
-  const serviceMappings = {
+  const serviceMappings: Record<string, string> = {
     "KINÉSITHERAPIE (30 Min)": "66eb4ec8615c83d533d03887",
     "OSTÉOPATHIE (Bosquet)": "66eb4ee0615c83d533d0388a",
     "OSTÉOPATHIE (Casa Padel 1,2 et 3)": "66eb4ef1615c83d533d0388c",
@@ -750,495 +750,417 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   
   // Process mappings and prepare data
   const processMapping = () => {
+    if (Object.keys(fieldMappings).length === 0) {
+      setError('Please map at least one field before proceeding');
+      return;
+    }
+    
     try {
-      // Check if required fields are mapped
-      const requiredFields = ['date', 'center', 'client', 'cost'];
-      const missingRequiredFields = requiredFields.filter(field => {
-        const mapping = fieldMappings[field];
-        // Field could be directly mapped or have a special value
-        return !mapping && mapping !== 0 && 
-               mapping !== 'currentUser' && 
-               mapping !== 'defaultRevenue' && 
-               mapping !== 'defaultCost';
-      });
+      setIsLoading(true);
+      setProgress(50);
       
-      // For service, we'll provide defaults if not mapped, so exclude it from required fields check
-      // but notify the user that we're using defaults
-      let serviceWarning = false;
-      if (!fieldMappings['service'] && fieldMappings['service'] !== 0) {
-        console.log("Service field not mapped - will use defaults");
-        serviceWarning = true;
+      // Skip header row (index 0)
+      const dataRows = extractedText.slice(1);
+      const mappedRows = [];
+      
+      for (const row of dataRows) {
+        if (!row || row.length === 0) continue;
+        
+        const mappedRow: Record<string, any> = {};
+        
+        // Process each field mapping
+        for (const [field, columnIndex] of Object.entries(fieldMappings)) {
+          // Skip fields that end with _manual as they're handled separately
+          if (field.endsWith('_manual')) continue;
+          
+          if (columnIndex === 'manual') {
+            // For manual selection, use the _manual value
+            const manualValue = fieldMappings[`${field}_manual`];
+            if (manualValue) {
+              mappedRow[field] = manualValue;
+            }
+          } else if (typeof columnIndex === 'number' || !isNaN(Number(columnIndex))) {
+            // For regular column mappings
+            const idx = Number(columnIndex);
+            if (row[idx] !== undefined) {
+              mappedRow[field] = row[idx];
+            }
+          }
+        }
+        
+        mappedRows.push(mappedRow);
       }
       
-      if (missingRequiredFields.length > 0) {
-        setError(`Missing required field mappings: ${missingRequiredFields.join(', ')}`);
-        return;
-      }
-      
-      // Show info about index auto-numbering and service defaults if needed
-      let infoMessage = "Processing data... Transaction indexes will be auto-assigned sequentially from the last existing index.";
-      if (serviceWarning) {
-        infoMessage += " Service field not mapped - will use default services.";
-      }
-      setSuccess(infoMessage);
-      
-      // Prepare the transaction data
-      const preparedData = prepareTransactionData();
-      if (preparedData.length > 0) {
-        setMappedData(preparedData);
-        setStep(3);
-      }
-    } catch (err: any) {
-      console.error("Mapping error:", err);
-      setError(err.message || 'Error processing field mappings');
+      console.log('Mapped data:', mappedRows);
+      setMappedData(mappedRows);
+      setStep(3); // Move to validation/review step
+    } catch (error) {
+      console.error('Error mapping data:', error);
+      setError('Error processing the data. Please check your mapping.');
+    } finally {
+      setIsLoading(false);
+      setProgress(70);
     }
   };
   
   // Prepare and validate transaction data
   const prepareTransactionData = () => {
-    // Map the data to transactions
-    const mappedData = parsedData.map((row: any, rowIndex: number) => {
-      const transaction: any = {};
+    // Create a client lookup function to find client ID by name
+    const findClientId = (clientName: string): string | null => {
+      if (!clientName) return null;
       
-      // Store original values for necessary display
-      const originalValues: Record<string, string> = {};
-      
-      // Always set index automatically based on lastTransactionIndex
-      // This ensures indexes are sequential and continue from the last one in the database
-      transaction.index = lastTransactionIndex + 1 + rowIndex;
-      
-      // Map fields based on fieldMappings - only include fields that are explicitly mapped
-      Object.entries(fieldMappings).forEach(entry => {
-        const [field, columnIndexOrSpecial] = entry;
-        
-        // Skip index as we're setting it automatically
-        if (field === 'index') {
-          return;
-        }
-        
-        // Special handling for default values
-        if (columnIndexOrSpecial === 'currentUser') {
-          transaction[field] = user._id;
-          transaction.originalWorkerName = `${user.firstName} ${user.lastName}`;
-        } 
-        else if (columnIndexOrSpecial === 'defaultRevenue') {
-          transaction[field] = 'revenue';
-        }
-        else if (columnIndexOrSpecial === 'defaultCost') {
-          transaction[field] = 'cost';
-        }
-        // If service isn't mapped, use a default
-        else if (field === 'service' && columnIndexOrSpecial === '') {
-          // Try to find a default service from data
-          const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
-          if (defaultService) {
-            transaction[field] = defaultService._id;
-            transaction.originalServiceName = defaultService.name;
-          } else if (data.service && data.service.length > 0) {
-            // Use the first available service as fallback
-            transaction[field] = data.service[0]._id;
-            transaction.originalServiceName = data.service[0].name;
-          }
-        }
-        // Normal field mapping
-        else {
-          const columnIndex = Number(columnIndexOrSpecial);
-          const headers = extractedText[0];
-          const headerName = headers[columnIndex];
-          if (row[headerName] !== undefined) {
-            let value = row[headerName];
-            
-            // Store original value before any conversion
-            originalValues[field] = value;
-            
-            // Type conversions based on field type
-            if (field === 'date') {
-              // CRITICAL: Just use exactly what's in Excel with no manipulation whatsoever
-              let dateValue = value.toString();
-              transaction.originalDateFormat = dateValue;
-              transaction[field] = dateValue; // Use exact same value for both fields
-            }
-            else if (field === 'cost' || field === 'costWithTaxes' || field === 'taxes') {
-              // Ensure numbers
-              if (typeof value === 'string') {
-                // Remove any non-numeric characters except decimal point and minus sign
-                const cleanedValue = value.replace(/[^\d.-]/g, '');
-                value = parseFloat(cleanedValue);
-                if (isNaN(value)) value = 0;
-              } else {
-                value = Number(value);
-                if (isNaN(value)) value = 0;
-              }
-              transaction[field] = value;
-            }
-            else if (field === 'client') {
-              // Store the original client name
-              transaction.originalClientName = value;
-              
-              // If it's already an ObjectId, use it directly
-              if (isValidObjectId(value)) {
-                transaction[field] = value;
-                
-                // Try to get human-readable name if we only have an ID
-                for (const [name, id] of Object.entries(clientMappings)) {
-                  if (id === value) {
-                    transaction.originalClientName = name;
-                    break;
-                  }
-                }
-              } else {
-                transaction[field] = value;
-              }
-            }
-            else if (field === 'center') {
-              // Store the original center name
-              transaction.originalCenterName = value;
-              
-              // If it's already an ObjectId, use it directly
-              if (isValidObjectId(value)) {
-                transaction[field] = value;
-                
-                // Try to get human-readable name if we only have an ID
-                for (const [name, id] of Object.entries(centerMappings)) {
-                  if (id === value) {
-                    transaction.originalCenterName = name;
-                    break;
-                  }
-                }
-              } else {
-                transaction[field] = value;
-              }
-            }
-            else if (field === 'service') {
-              // Store the original service name
-              transaction.originalServiceName = value;
-              
-              // If it's already an ObjectId, use it directly
-              if (isValidObjectId(value)) {
-                transaction[field] = value;
-                
-                // Try to get human-readable name if we only have an ID
-                for (const [name, id] of Object.entries(serviceMappings)) {
-                  if (id === value) {
-                    transaction.originalServiceName = name;
-                    break;
-                  }
-                }
-              } else {
-                transaction[field] = value;
-              }
-            }
-            else {
-              transaction[field] = value;
-            }
-          }
-        }
-      });
-      
-      // Set only essential default values if not mapped (minimal approach)
-      // This ensures we don't add fields that aren't in the specified table
-      if (!transaction.createdBy) transaction.createdBy = user._id;
-      
-      // Default service if not set by any of the above methods
-      if (!transaction.service) {
-        // Attempt to find a standard service as fallback
-        const defaultService = data.service && data.service.find((s: any) => s.name === "KINÉSITHÉRAPIE (30min)");
-        if (defaultService) {
-          transaction.service = defaultService._id;
-          transaction.originalServiceName = defaultService.name;
-        } else if (data.service && data.service.length > 0) {
-          // Use the first available service as last resort
-          transaction.service = data.service[0]._id;
-          transaction.originalServiceName = data.service[0].name;
-        }
+      // Direct lookup in clientMappings
+      const mappedClient = clientMappings[clientName];
+      if (mappedClient) {
+        return mappedClient;
       }
       
-      return transaction;
-    });
-    
-    // Transform references (client, center, service) to ObjectIds
-    const transformedData = mappedData.map(validateAndTransformReferences);
-    
-    // Filter out any rows that don't have valid required fields
-    const validData = transformedData.filter((transaction: any) => {
-      return transaction.date && transaction.client && transaction.center && transaction.service && 
-             (transaction.cost !== undefined);
-    });
-    
-    console.log(`Mapped ${mappedData.length} rows to ${validData.length} valid transactions`);
-    
-    if (validData.length === 0) {
-      setError("No valid transactions found after mapping. Check your field mappings and console for details.");
-      return [];
-    }
-    
-    return validData;
-  };
-  
-  // Helper function for case-insensitive and normalized comparisons
-  const normalizeAndCompare = (str1: string, str2: string): boolean => {
-    if (!str1 || !str2) return false;
-    
-    // Convert both strings to lowercase, remove extra spaces
-    const normalized1 = str1.toLowerCase().trim().replace(/\s+/g, ' ');
-    const normalized2 = str2.toLowerCase().trim().replace(/\s+/g, ' ');
-    
-    // Check for exact match after normalization
-    if (normalized1 === normalized2) return true;
-    
-    // Check if one contains the other
-    if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) return true;
-    
-    return false;
-  };
-  
-  // Update the validateAndTransformReferences function to handle auto-assigned service IDs
-  const validateAndTransformReferences = (transaction: any) => {
-    try {
-      // Make a copy to avoid mutating the original
-      const transformed = { ...transaction };
+      // Try to find in data.client array
+      const client = data.client?.find((c: any) => 
+        `${c.firstName} ${c.lastName}`.toLowerCase() === clientName.toLowerCase() ||
+        c.name?.toLowerCase() === clientName.toLowerCase()
+      );
       
-      // Client validation and transformation
-      if (transformed.client && !isValidObjectId(transformed.client)) {
-        // Try to find client by name in our database
-        const matchedClient = data.client?.find((c: any) => {
-          const fullName = `${c.firstName} ${c.lastName}`.trim();
-          return normalizeAndCompare(fullName, transformed.client) || 
-                 normalizeAndCompare(c.name || '', transformed.client);
-        });
-        
-        if (matchedClient) {
-          // Store original name and update the ID
-          transformed.originalClientName = transformed.client;
-          transformed.client = matchedClient._id;
-        } else {
-          console.warn(`No matching client found for: ${transformed.client}`);
-        }
+      return client?._id || null;
+    };
+    
+    // Create a center lookup function
+    const findCenterId = (centerName: string): string | null => {
+      if (!centerName) return null;
+      
+      // Direct lookup in centerMappings
+      const mappedCenter = centerMappings[centerName];
+      if (mappedCenter) {
+        return mappedCenter;
       }
       
-      // Center validation and transformation
-      if (transformed.center && !isValidObjectId(transformed.center)) {
-        // Try to find center by name
-        const matchedCenter = data.center?.find((c: any) => 
-          normalizeAndCompare(c.name, transformed.center)
-        );
-        
-        if (matchedCenter) {
-          // Store original name and update the ID
-          transformed.originalCenterName = transformed.center;
-          transformed.center = matchedCenter._id;
-        } else {
-          console.warn(`No matching center found for: ${transformed.center}`);
-        }
+      // Try to find in data.center array
+      const center = data.center?.find((c: any) => 
+        c.name?.toLowerCase() === centerName.toLowerCase()
+      );
+      
+      return center?._id || null;
+    };
+    
+    // Create a service lookup function
+    const findServiceId = (serviceName: string): string | null => {
+      if (!serviceName) return null;
+      
+      // If it's already an ID (from manual selection), return it
+      if (isValidObjectId(serviceName)) {
+        return serviceName;
       }
       
-      // Service validation and transformation
-      // Only try to match if the service isn't already an ObjectId and we have an original service name
-      if (transformed.service && !isValidObjectId(transformed.service) && transformed.originalServiceName) {
-        // Try to find service by name
-        const matchedService = data.service?.find((s: any) => 
-          normalizeAndCompare(s.name, transformed.originalServiceName)
-        );
-        
-        if (matchedService) {
-          // Update to use the matched service ID
-          transformed.service = matchedService._id;
-        } else {
-          console.warn(`No matching service found for: ${transformed.originalServiceName}`);
-        }
+      // Direct lookup in serviceMappings
+      const mappedService = serviceMappings[serviceName];
+      if (mappedService) {
+        return mappedService;
       }
       
-      // Service should already be set to a valid default if not mapped or found
+      // Try to find in data.service array
+      const service = data.service?.find((s: any) => 
+        s.name?.toLowerCase() === serviceName.toLowerCase()
+      );
       
-      return transformed;
-    } catch (error: any) {
-      console.error("Error validating references:", error, transaction);
-      return transaction; // Return original if there's an error
-    }
+      return service?._id || null;
+    };
+    
+    // Transform the mapped data into transaction objects
+    return mappedData.map((row, index) => {
+      try {
+        // Extract values with default handling
+        const date = row.date || new Date().toISOString().split('T')[0];
+        const clientInput = row.client || '';
+        const centerInput = row.center || '';
+        const serviceInput = row.service || fieldMappings['service_manual'] || '';
+        
+        // Look up IDs or use existing IDs
+        const clientId = isValidObjectId(clientInput) ? clientInput : findClientId(clientInput);
+        const centerId = isValidObjectId(centerInput) ? centerInput : findCenterId(centerInput);
+        const serviceId = isValidObjectId(serviceInput) ? serviceInput : findServiceId(serviceInput);
+        
+        // Start building the transaction
+        const transaction: Record<string, any> = {
+          date: date,
+          // Set the worker to the current user if not specified
+          worker: row.worker || user._id,
+          cost: parseFloat(String(row.costWithTaxes || row.cost || 0)),
+          taxes: parseFloat(String(row.taxes || 0)),
+          typeOfTransaction: row.typeOfTransaction || 'income',
+          typeOfMovement: row.typeOfMovement || 'unique',
+          frequency: row.frequency || 'daily',
+          typeOfClient: row.typeOfClient || 'professional',
+          index: lastTransactionIndex + index + 1
+        };
+        
+        // Add client details
+        if (clientId) {
+          transaction.client = clientId;
+        } else if (clientInput) {
+          transaction.originalClientName = clientInput;
+        }
+        
+        // Add center details
+        if (centerId) {
+          transaction.center = centerId;
+        } else if (centerInput) {
+          transaction.originalCenterName = centerInput;
+        }
+        
+        // Add service details
+        if (serviceId) {
+          transaction.service = serviceId;
+        } else if (serviceInput) {
+          transaction.originalServiceName = serviceInput;
+        }
+        
+        console.log(`Prepared transaction ${index}:`, transaction);
+        return transaction;
+      } catch (error) {
+        console.error(`Error preparing transaction ${index}:`, error);
+        return null;
+      }
+    }).filter(Boolean); // Remove any null entries
   };
   
   // Helper function for field selector rendering
   const renderFieldSelector = (fieldKey: string) => {
-    // Filter out empty headers
-    const columnOptions = extractedText[0]?.map((header, index) => (
-      header && header.trim() !== "" ? 
-        <option key={index} value={index}>{header}</option> :
-        null
-    ));
-    
-    // Special rendering for different field types
-    if (fieldKey === 'typeOfTransaction') {
+    if (fieldKey === 'service') {
+      // Special handling for service field
       return (
-        <>
-          <option value="">-- Select Column --</option>
-          {columnOptions}
-          <option value="defaultRevenue">All Revenue</option>
-          <option value="defaultCost">All Cost</option>
-        </>
-      );
-    } else if (fieldKey === 'worker') {
-      return (
-        <>
-          <option value="">-- Select Column --</option>
-          {columnOptions}
-          <option value="currentUser">Use Current User ({user.firstName} {user.lastName})</option>
-        </>
-      );
-    } else if (fieldKey === 'service') {
-      return (
-        <>
-          <option value="">-- Use Default KINÉSITHÉRAPIE (30min) --</option>
-          {columnOptions}
-        </>
-      );
-    } else {
-      return (
-        <>
-          <option value="">-- Select Column --</option>
-          {columnOptions}
-        </>
+        <Form.Group key={fieldKey} className="mb-3">
+          <Form.Label>Service Field</Form.Label>
+          <Form.Select 
+            value={fieldMappings[fieldKey] || ''}
+            onChange={(e) => updateFieldMapping(fieldKey, e.target.value)}
+          >
+            <option value="">-- Select Column --</option>
+            {extractedText[0]?.map((header, index) => (
+              <option key={index} value={index}>{header}</option>
+            ))}
+            <option value="manual">Select Service Manually</option>
+          </Form.Select>
+          
+          {fieldMappings[fieldKey] === 'manual' && (
+            <Form.Select 
+              className="mt-2"
+              onChange={(e) => {
+                const updatedMappings = {...fieldMappings};
+                updatedMappings[`${fieldKey}_manual`] = e.target.value;
+                setFieldMappings(updatedMappings);
+              }}
+            >
+              <option value="">-- Select Service --</option>
+              {data.service?.map((service: any) => (
+                <option key={service._id} value={service._id}>
+                  {service.name}
+                </option>
+              ))}
+            </Form.Select>
+          )}
+        </Form.Group>
       );
     }
+    
+    return (
+      <Form.Group key={fieldKey} className="mb-3">
+        <Form.Label>{fieldKey === 'costWithTaxes' ? 'Amount with taxes' : fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1).replace(/([A-Z])/g, ' $1')}</Form.Label>
+        <Form.Select 
+          value={fieldMappings[fieldKey] || ''}
+          onChange={(e) => updateFieldMapping(fieldKey, e.target.value)}
+        >
+          <option value="">-- Select Column --</option>
+          {extractedText[0]?.map((header, index) => (
+            <option key={index} value={index}>{header}</option>
+          ))}
+        </Form.Select>
+      </Form.Group>
+    );
   };
   
   const renderReviewStep = () => {
-    if (!mappedData || mappedData.length === 0) {
-      return <Alert variant="warning">No data to review. Please go back and check your mapping.</Alert>;
-    }
+    const preparedTransactions = prepareTransactionData();
     
-    // Update headers to match exactly the table in the image
-    const headers = [
-      { key: 'index', label: 'Index' },
-      { key: 'date', label: 'Date' },
-      { key: 'center', label: 'Center' },
-      { key: 'client', label: 'Client' },
-      { key: 'costWithTaxes', label: 'Amount with taxes' },
-      { key: 'cost', label: 'Amount without taxes' },
-      { key: 'worker', label: 'Worker' },
-      { key: 'taxes', label: 'Taxes' },
-      { key: 'typeOfTransaction', label: 'Type of transaction' },
-      { key: 'typeOfMovement', label: 'Type of movement' },
-      { key: 'frequency', label: 'Frequency' },
-      { key: 'typeOfClient', label: 'Type of client' },
-      { key: 'service', label: 'Service' },
-    ];
+    // Calculate totals - safely handle null transactions
+    const totalAmount = preparedTransactions
+      .filter((transaction): transaction is Record<string, any> => transaction !== null)
+      .reduce((sum, transaction) => sum + (parseFloat(String(transaction.cost)) || 0), 0)
+      .toFixed(2);
     
-    // Create a direct mapping of IDs to names for clients
-    const clientIdMap: Record<string, string> = {
-      // Most critical ID mapping - this is the one that shows up in screenshots
-      "67d814a15d16925ff8bd713c": "JORGE GOENAGA PEREZ",
-      
-      // Other common IDs
-      "67d814a15d16925ff8bd7158": "EPSILOG SARL",
-      "67d814a15d16925ff8bd715a": "MACSF-ASSU",
-      "67d814a15d16925ff8bd715c": "C.A.R.P.I.M.K.O",
-      "67d814a15d16925ff8bd715e": "ADIS",
-      "67d814a15d16925ff8bd7160": "GC RE DOCTOLIB",
-      
-      // New IDs from screenshot
-      "e7d814a15d16925ff8bd713c": "JORGE GOENAGA PEREZ",
-      "e7e814a15d16925ff8bd7190": "Account Maintenance Fee",
-      "e7e814a15d16925ff8bd7191": "TPE Fixe IP + Pinpad",
-      "e7e814a15d16925ff8bd7192": "Debit Interest and Overdraft Fees",
-      "e7e814a15d16925ff8bd7193": "RITM LA FONTAINE",
-      "e7e814a15d16925ff8bd7194": "Mauro Navarro",
-      "e7e814a15d16925ff8bd7195": "Ana STEFANOVIC",
-      "e7e814a15d16925ff8bd7196": "Card Transaction",
-      "e7e814a15d16925ff8bd7197": "KARAPASS COURTAGE",
-      "e7e814a15d16925ff8bd7198": "SOFINCO AUTO MOTO LOISIRS",
-      "e7e814a15d16925ff8bd7199": "GIEPS-GIE DE PREVOYANCE SOCIALE",
-      "e7e814a15d16925ff8bd719a": "Quietis Pro Renewal",
-      "e7e814a15d16925ff8bd719b": "GG IMMOBILIER",
-      "e7e814a15d16925ff8bd719c": "DIAC SA"
-    };
-    
-    // Helper function to get display name for client with fallbacks
     const getClientDisplayName = (transaction: any): string => {
-      // Prioritize original name if available
-      if (transaction.originalClientName) {
-        return transaction.originalClientName;
+      if (transaction.client && transaction.originalClientName) {
+        const client = data.client?.find((c: any) => c._id === transaction.client);
+        if (client) {
+          return `${client.firstName} ${client.lastName} (Mapped from: ${transaction.originalClientName})`;
+        } else {
+          return `ID: ${transaction.client} (Mapped from: ${transaction.originalClientName})`;
+        }
+      } else if (transaction.client) {
+        const client = data.client?.find((c: any) => c._id === transaction.client);
+        return client ? `${client.firstName} ${client.lastName}` : `ID: ${transaction.client}`;
+      } else if (transaction.originalClientName) {
+        return `${transaction.originalClientName} (Not mapped)`;
       }
-      
-      // Try direct ID mapping 
-      if (isValidObjectId(transaction.client) && clientIdMap[transaction.client]) {
-        return clientIdMap[transaction.client];
-      }
-      
-      // Use what we have
-      return transaction.client || "Unknown Client";
+      return 'No Client';
     };
     
-    // Helper function to get display name for center
     const getCenterDisplayName = (transaction: any): string => {
-      // Prioritize original name if available
-      if (transaction.originalCenterName) {
-        return transaction.originalCenterName;
+      if (transaction.center && transaction.originalCenterName) {
+        const center = data.center?.find((c: any) => c._id === transaction.center);
+        if (center) {
+          return `${center.name} (Mapped from: ${transaction.originalCenterName})`;
+        } else {
+          return `ID: ${transaction.center} (Mapped from: ${transaction.originalCenterName})`;
+        }
+      } else if (transaction.center) {
+        const center = data.center?.find((c: any) => c._id === transaction.center);
+        return center ? center.name : `ID: ${transaction.center}`;
+      } else if (transaction.originalCenterName) {
+        return `${transaction.originalCenterName} (Not mapped)`;
       }
-      
-      // Use what we have
-      return transaction.center || "Unknown Center";
+      return 'No Center';
     };
     
-    // Helper function to get display name for service
     const getServiceDisplayName = (transaction: any): string => {
-      // Prioritize original name if available
-      if (transaction.originalServiceName) {
-        return transaction.originalServiceName;
+      if (transaction.service && transaction.originalServiceName) {
+        const service = data.service?.find((s: any) => s._id === transaction.service);
+        if (service) {
+          return `${service.name} (Mapped from: ${transaction.originalServiceName})`;
+        } else {
+          return `ID: ${transaction.service} (Mapped from: ${transaction.originalServiceName})`;
+        }
+      } else if (transaction.service) {
+        const service = data.service?.find((s: any) => s._id === transaction.service);
+        return service ? service.name : `ID: ${transaction.service}`;
+      } else if (transaction.originalServiceName) {
+        return `${transaction.originalServiceName} (Not mapped)`;
+      } else if (fieldMappings['service_manual']) {
+        const service = data.service?.find((s: any) => s._id === fieldMappings['service_manual']);
+        return service ? `${service.name} (Manual selection)` : `ID: ${fieldMappings['service_manual']} (Manual selection)`;
       }
-      
-      // Use what we have
-      return transaction.service || "Unknown Service";
+      return 'No Service';
     };
+    
+    // Add a function to properly format the date for display
+    const formatDate = (dateStr: string): string => {
+      if (!dateStr) return 'No Date';
+      
+      try {
+        // If it's already an ISO date, format it nicely
+        if (dateStr.includes('-')) {
+          const date = new Date(dateStr);
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString();
+          }
+        }
+        // Otherwise just return as is
+        return dateStr;
+      } catch (e) {
+        return dateStr;
+      }
+    };
+    
+    // Group transactions by service for better review
+    const serviceGroups: Record<string, any[]> = {};
+    preparedTransactions
+      .filter((transaction): transaction is Record<string, any> => transaction !== null)
+      .forEach(transaction => {
+        const serviceKey = transaction.service || 'unassigned';
+        if (!serviceGroups[serviceKey]) {
+          serviceGroups[serviceKey] = [];
+        }
+        serviceGroups[serviceKey].push(transaction);
+      });
     
     return (
-      <>
-        <Alert variant="info">
-          <p>Review the mapped transactions before submitting.</p>
-          <p>Make sure the data looks correct and matches the exact transaction table format.</p>
-          <p>The index numbers will continue from the last transaction number ({lastTransactionIndex}).</p>
-        </Alert>
+      <div className="mt-4">
+        <h4>Review Transactions ({preparedTransactions.length})</h4>
+        <p>Total Amount: €{totalAmount}</p>
         
-        <div className="table-responsive">
-          <Table bordered hover>
-            <thead>
-              <tr>
-                <th></th> {/* Checkbox column */}
-                {headers.map((header) => (
-                  <th key={header.key}>{header.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {mappedData.slice(0, 10).map((transaction, index) => (
-                <tr key={index}>
-                  <td>
-                    <Form.Check type="checkbox" disabled={true} checked={true} />
-                  </td>
-                  <td>{transaction.index}</td>
-                  <td>{transaction.originalDateFormat || transaction.date}</td>
-                  <td>{getCenterDisplayName(transaction)}</td>
-                  <td>{getClientDisplayName(transaction)}</td>
-                  <td>{transaction.costWithTaxes || transaction.cost}</td>
-                  <td>{transaction.cost}</td>
-                  <td>{transaction.originalWorkerName || transaction.worker}</td>
-                  <td>{transaction.taxes || '0%'}</td>
-                  <td>{transaction.typeOfTransaction || 'revenue'}</td>
-                  <td>{transaction.typeOfMovement || 'bank transfer'}</td>
-                  <td>{transaction.frequency || 'ordinary'}</td>
-                  <td>{transaction.typeOfClient || 'client'}</td>
-                  <td>{getServiceDisplayName(transaction)}</td>
-                </tr>
+        {/* Manual service selection if it hasn't been done yet */}
+        {!fieldMappings['service'] && !fieldMappings['service_manual'] && (
+          <Alert variant="warning" className="mb-3">
+            <Alert.Heading>Service Selection Required</Alert.Heading>
+            <p>
+              You haven't selected a service for these transactions. Please select a service below:
+            </p>
+            <Form.Select 
+              onChange={(e) => {
+                const updatedMappings = {...fieldMappings};
+                updatedMappings['service_manual'] = e.target.value;
+                setFieldMappings(updatedMappings);
+              }}
+              className="mt-2 mb-3"
+            >
+              <option value="">-- Select Service --</option>
+              {data.service?.map((service: any) => (
+                <option key={service._id} value={service._id}>
+                  {service.name}
+                </option>
               ))}
-            </tbody>
-          </Table>
-        </div>
-        
-        {mappedData.length > 10 && (
-          <Alert variant="secondary">
-            Showing 10 of {mappedData.length} transactions. All {mappedData.length} will be imported.
+            </Form.Select>
           </Alert>
         )}
-      </>
+        
+        <Table striped bordered hover size="sm" responsive>
+          <thead>
+            <tr>
+              <th>Index</th>
+              <th>Date</th>
+              <th>Client</th>
+              <th>Center</th>
+              <th>Service</th>
+              <th>Amount</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {preparedTransactions
+              .filter((transaction): transaction is Record<string, any> => transaction !== null)
+              .map((transaction, index) => (
+                <tr key={index}>
+                  <td>{transaction.index}</td>
+                  <td>{formatDate(transaction.date)}</td>
+                  <td>{getClientDisplayName(transaction)}</td>
+                  <td>{getCenterDisplayName(transaction)}</td>
+                  <td>{getServiceDisplayName(transaction)}</td>
+                  <td>€{parseFloat(String(transaction.cost)).toFixed(2)}</td>
+                  <td>{transaction.typeOfTransaction}</td>
+                </tr>
+              ))}
+          </tbody>
+        </Table>
+        
+        <div className="d-flex justify-content-between mt-3">
+          <Button variant="secondary" onClick={() => setStep(2)}>
+            Back to Mapping
+          </Button>
+          <div>
+            <Button 
+              variant="primary" 
+              onClick={handleSubmit} 
+              disabled={isLoading || preparedTransactions.length === 0 || (!fieldMappings['service'] && !fieldMappings['service_manual'])}
+              className="me-2"
+            >
+              {isLoading ? (
+                <>
+                  <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
+                  <span className="ms-2">Importing...</span>
+                </>
+              ) : (
+                'Import Transactions'
+              )}
+            </Button>
+            <Button 
+              variant="outline-secondary" 
+              onClick={exportToExcel} 
+              disabled={preparedTransactions.length === 0}
+            >
+              Export to Excel
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   };
   
