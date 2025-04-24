@@ -7,6 +7,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     const deleteColumns: string[] = [
         "_id",
         "__v",
+        "index",
         "secondaryPhoneNumber",
         "originalDateFormat",
         "originalClientName",

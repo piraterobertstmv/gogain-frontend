@@ -199,6 +199,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
     // For transaction tables, use the defined column order
     if (column === "transaction") {
+        // Define a list of fields that should be excluded from display
+        const excludedFields = [
+            ...deleteColumns,
+            "index" // Exclude the redundant index field that shows all "1"s
+        ];
+        
         const orderedColumns = [
             "date", 
             "center", 
@@ -235,7 +241,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                         
                         {orderedColumns.map((key, index) => {
-                            if (deleteColumns.includes(key)) return null;
+                            if (excludedFields.includes(key)) return null;
                             
                             const value = dataRow[key];
                             
