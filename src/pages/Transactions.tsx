@@ -7,6 +7,7 @@ import Modal from 'react-bootstrap/Modal';
 import { MultiFilterInput } from './MultipleFilterInput';
 import { BatchTransactionForm } from '../components/BatchTransactionForm';
 import { PdfTransactionImporter } from '../components/PdfTransactionImporter';
+import { PdfTransactionExporter } from '../components/PdfTransactionExporter';
 
 // function toCamelCaseArray(names: string[]): string[] {
 //     return names.map(name =>
@@ -105,7 +106,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [showPdfImporter, setShowPdfImporter] = useState(false);
-
+    const [showPdfExporter, setShowPdfExporter] = useState(false);
 
     const handleCloseBatchForm = () => {
         setShowBatchModal(false);
@@ -115,6 +116,10 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     const handleClosePdfImporter = () => {
         setShowPdfImporter(false);
         reloadData();
+    };
+
+    const handleClosePdfExporter = () => {
+        setShowPdfExporter(false);
     };
 
     return <>
@@ -141,6 +146,18 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             >
                 <i className="fas fa-file-pdf me-2"></i>
                 Import from PDF
+            </Button>
+            <Button 
+                onClick={() => setShowPdfExporter(true)}
+                style={{ 
+                    marginLeft: '10px', 
+                    backgroundColor: "#F2F2F2", 
+                    border: "solid 0.5px #736A65", 
+                    color: "#706762" 
+                }}
+            >
+                <i className="fas fa-file-export me-2"></i>
+                Export Transactions
             </Button>
         </div>
 
@@ -178,6 +195,20 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             onSuccess={reloadData}
             data={data}
             user={user}
+        />
+        
+        {/* PDF Transaction Exporter component */}
+        <PdfTransactionExporter
+            show={showPdfExporter}
+            onHide={handleClosePdfExporter}
+            data={data}
+            user={user}
+            filters={{
+                center: filtersCenter,
+                client: filtersClient,
+                worker: filtersWorker,
+                service: filtersService
+            }}
         />
         
         <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
