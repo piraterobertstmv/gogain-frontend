@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from "react";
 import { ButtonsRadio } from "../components/ButtonsRadio"
 import { DatabaseForm } from "../components/popup/DatabaseForm";
 import { Table } from "../components/table/Table"
@@ -7,7 +7,8 @@ import Modal from 'react-bootstrap/Modal';
 import { MultiFilterInput } from './MultipleFilterInput';
 import { BatchTransactionForm } from '../components/BatchTransactionForm';
 import { PdfTransactionImporter } from '../components/PdfTransactionImporter';
-import { PdfTransactionExporter } from '../components/PdfTransactionExporter';
+import { Toast, ToastContainer } from "react-bootstrap";
+import './Transactions.css';
 
 // function toCamelCaseArray(names: string[]): string[] {
 //     return names.map(name =>
@@ -55,13 +56,22 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     const [filtersService, setFiltersService] = useState<string[]>([]);
 
     const [deleteLines, setDeleteLines] = useState<string[]>([])
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [notification, setNotification] = useState<{show: boolean, message: string, type: 'success'|'danger'}>({
+        show: false,
+        message: '',
+        type: 'success'
+    });
 
     const toggleLine = (line: string) => {
-        setDeleteLines((prev) =>
-            prev.includes(line)
+        console.log('Toggling line:', line);
+        setDeleteLines((prev) => {
+            const newLines = prev.includes(line)
                 ? prev.filter((item) => item !== line)
-                : [...prev, line]
-        );
+                : [...prev, line];
+            console.log('New deleteLines state:', newLines);
+            return newLines;
+        });
     };
 
     const toggleAllLines = () => {
@@ -80,33 +90,88 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}transaction/${selectedId}`, {
+            // Fix URL formatting by ensuring there's no double slash
+            const baseUrl = import.meta.env.VITE_API_URL.endsWith('/') 
+                ? import.meta.env.VITE_API_URL.slice(0, -1) 
+                : import.meta.env.VITE_API_URL;
+                
+            console.log(`Deleting transaction ${selectedId} with URL: ${baseUrl}/transaction/${selectedId}`);
+            
+            const response = await fetch(`${baseUrl}/transaction/${selectedId}`, {
                 method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
             });
     
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                const errorData = await response.json().catch(() => null);
+                console.error('Delete failed:', errorData || response.statusText);
+                setNotification({
+                    show: true,
+                    message: `Failed to delete transaction: ${errorData?.message || response.statusText}`,
+                    type: 'danger'
+                });
+                throw new Error(errorData?.message || 'Failed to delete transaction');
             }
             
-            reloadData();
+            console.log(`Successfully deleted transaction ${selectedId}`);
+            return true;
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error deleting transaction:', error);
+            return false;
         }
     }
 
     async function deleteSelectedTransactions(selectedId: string[]) {
-        const isConfirmed = window.confirm("Are you sure you want to delete these transactions?");
+        if (selectedId.length === 0) {
+            setNotification({
+                show: true,
+                message: 'No transactions selected for deletion',
+                type: 'danger'
+            });
+            return;
+        }
+        
+        const isConfirmed = window.confirm(`Are you sure you want to delete ${selectedId.length} transaction(s)?`);
 
         if (isConfirmed) {
+            setIsDeleting(true);
+            let successCount = 0;
+            
             for (let i = 0; i < selectedId.length; i++) {
-                deleteSelectedTransaction(selectedId[i])
+                const success = await deleteSelectedTransaction(selectedId[i]);
+                if (success) successCount++;
+            }
+            
+            setIsDeleting(false);
+            
+            if (successCount > 0) {
+                // Clear selection after successful deletion
+                setDeleteLines([]);
+                // Show success notification
+                setNotification({
+                    show: true,
+                    message: `Successfully deleted ${successCount} transaction(s)`,
+                    type: 'success'
+                });
+                // Reload data only once after all deletions
+                reloadData();
+            }
+            
+            if (successCount < selectedId.length) {
+                setNotification({
+                    show: true,
+                    message: `Deleted ${successCount} of ${selectedId.length} selected transactions. Some transactions could not be deleted.`,
+                    type: 'danger'
+                });
             }
         }
     }
 
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [showPdfImporter, setShowPdfImporter] = useState(false);
-    const [showPdfExporter, setShowPdfExporter] = useState(false);
+
 
     const handleCloseBatchForm = () => {
         setShowBatchModal(false);
@@ -116,10 +181,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     const handleClosePdfImporter = () => {
         setShowPdfImporter(false);
         reloadData();
-    };
-
-    const handleClosePdfExporter = () => {
-        setShowPdfExporter(false);
     };
 
     return <>
@@ -147,18 +208,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 <i className="fas fa-file-pdf me-2"></i>
                 Import from PDF
             </Button>
-            <Button 
-                onClick={() => setShowPdfExporter(true)}
-                style={{ 
-                    marginLeft: '10px', 
-                    backgroundColor: "#F2F2F2", 
-                    border: "solid 0.5px #736A65", 
-                    color: "#706762" 
-                }}
-            >
-                <i className="fas fa-file-export me-2"></i>
-                Export Transactions
-            </Button>
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginTop: "1vh"  }}>
@@ -166,10 +215,31 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             <MultiFilterInput name='Client' data={data}  availableFilters={clientIds}  modifyFilter={setFiltersClient}/>
             <MultiFilterInput name='Worker' data={data}  availableFilters={workerIds}  modifyFilter={setFiltersWorker}/>
             <MultiFilterInput name='Service' data={data} availableFilters={serviceIds} modifyFilter={setFiltersService}/>
-            <button className={deleteLines.length == 0 ? "logout-button-grey" : "logout-button"} onClick={() => deleteSelectedTransactions(deleteLines)}>
-                Delete
+            <button 
+                className={deleteLines.length === 0 ? "logout-button-grey" : "logout-button"} 
+                onClick={() => deleteSelectedTransactions(deleteLines)}
+                disabled={isDeleting || deleteLines.length === 0}
+            >
+                {isDeleting ? 'Deleting...' : `Delete${deleteLines.length > 0 ? ` (${deleteLines.length})` : ''}`}
             </button>
         </div>
+
+        <ToastContainer position="top-end" className="p-3 mt-5" style={{ zIndex: 1050 }}>
+            <Toast 
+                show={notification.show} 
+                onClose={() => setNotification({...notification, show: false})} 
+                delay={5000} 
+                autohide 
+                bg={notification.type}
+            >
+                <Toast.Header>
+                    <strong className="me-auto">{notification.type === 'success' ? 'Success' : 'Error'}</strong>
+                </Toast.Header>
+                <Toast.Body className={notification.type === 'success' ? '' : 'text-white'}>
+                    {notification.message}
+                </Toast.Body>
+            </Toast>
+        </ToastContainer>
 
         <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
@@ -195,20 +265,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             onSuccess={reloadData}
             data={data}
             user={user}
-        />
-        
-        {/* PDF Transaction Exporter component */}
-        <PdfTransactionExporter
-            show={showPdfExporter}
-            onHide={handleClosePdfExporter}
-            data={data}
-            user={user}
-            filters={{
-                center: filtersCenter,
-                client: filtersClient,
-                worker: filtersWorker,
-                service: filtersService
-            }}
         />
         
         <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>

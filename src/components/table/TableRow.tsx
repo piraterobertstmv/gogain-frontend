@@ -222,9 +222,14 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                             <input
                                 type="checkbox"
                                 checked={deleteLines.includes(dataRow._id)}
-                                onChange={() => deleteFunction(dataRow._id)}
+                                onChange={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Checkbox toggled for transaction:', dataRow._id);
+                                    deleteFunction(dataRow._id);
+                                }}
                                 style={{ cursor: "pointer", width: "1vw" }}
                                 onClick={(e) => e.stopPropagation()}
+                                aria-label={`Select transaction ${indexIn}`}
                             />
                         </td>
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
@@ -271,9 +276,14 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         <input
                             type="checkbox"
                             checked={deleteLines.includes(dataRow._id)}
-                            onChange={() => deleteFunction(dataRow._id)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                console.log('Checkbox toggled for transaction:', dataRow._id);
+                                deleteFunction(dataRow._id);
+                            }}
                             style={{ cursor: "pointer", width: "1vw" }}
                             onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select transaction ${indexIn}`}
                         />
                     </td>
                 )}

@@ -1,0 +1,30 @@
+/* Styling for the Transactions component */
+
+.logout-button {
+  background-color: #d95213;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #c14410;
+}
+
+.logout-button-grey {
+  background-color: #cccccc;
+  color: #666666;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: not-allowed;
+  margin-left: 10px;
+} 
