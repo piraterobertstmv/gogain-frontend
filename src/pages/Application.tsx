@@ -20,12 +20,12 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
         const fetchData = async () => {
             try {
                 const responses = await Promise.all([
-                    fetch(`${import.meta.env.VITE_API_URL}/transaction`),
-                    fetch(`${import.meta.env.VITE_API_URL}/client`),
-                    fetch(`${import.meta.env.VITE_API_URL}/users`),
-                    fetch(`${import.meta.env.VITE_API_URL}/center`),
-                    fetch(`${import.meta.env.VITE_API_URL}/service`),
-                    fetch(`${import.meta.env.VITE_API_URL}/costs`)
+                    fetch(`${import.meta.env.VITE_API_URL}transaction`),
+                    fetch(`${import.meta.env.VITE_API_URL}client`),
+                    fetch(`${import.meta.env.VITE_API_URL}users`),
+                    fetch(`${import.meta.env.VITE_API_URL}center`),
+                    fetch(`${import.meta.env.VITE_API_URL}service`),
+                    fetch(`${import.meta.env.VITE_API_URL}costs`)
                 ]);
 
                 const results = await Promise.all(responses.map(r => r.json()));

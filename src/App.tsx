@@ -15,7 +15,7 @@ function App() {
 
     const fetchUserData = async (token: string) => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/users/me`, {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}users/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
