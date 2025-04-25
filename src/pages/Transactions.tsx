@@ -9,6 +9,7 @@ import { BatchTransactionForm } from '../components/BatchTransactionForm';
 import { PdfTransactionImporter } from '../components/PdfTransactionImporter';
 import { Toast, ToastContainer } from "react-bootstrap";
 import './Transactions.css';
+import React from 'react';
 
 // function toCamelCaseArray(names: string[]): string[] {
 //     return names.map(name =>
@@ -182,6 +183,14 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         setShowPdfImporter(false);
         reloadData();
     };
+
+    // Add an effect to log the first transaction when data loads
+    React.useEffect(() => {
+        if (data && data.transaction && data.transaction.length > 0) {
+            console.log('TRANSACTION OBJECT:', JSON.stringify(data.transaction[0], null, 2));
+            console.log('TRANSACTION KEYS:', Object.keys(data.transaction[0]));
+        }
+    }, [data]);
 
     return <>
     <div className='p-5' style={{height: "100vh", overflow:"auto"}}>
