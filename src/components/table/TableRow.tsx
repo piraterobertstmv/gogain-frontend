@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Modal from 'react-bootstrap/Modal';
 import './Table.css';
 import { DatabaseForm } from "../popup/DatabaseForm";
@@ -13,6 +13,29 @@ function formatNumber(value: number): string {
 
 export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetDataFunc, user, deleteFunction, deleteLines }: { column: string, data: any, dataRow: any , indexIn: number, deleteColumns: string[], resetDataFunc: any, user: any, deleteFunction: any, deleteLines: any }) {
     const [show, setShow] = useState(false);
+    const rowRef = useRef<HTMLTableRowElement>(null);
+
+    // Effect to hide duplicate Index cells
+    useEffect(() => {
+        if (rowRef.current && column === "transaction") {
+            // We know the 2nd column is the intended index column (row number)
+            const cells = rowRef.current.querySelectorAll('td');
+            
+            if (cells.length > 2) {
+                // Check if cell at index 2 contains the value "1" (the problematic index column)
+                // Note: cell at index 0 is checkbox, cell at index 1 is the row number
+                let valueAtIndex2 = cells[2].textContent?.trim();
+                
+                // If we find a cell with content "1" at index 2, hide it - it's our duplicate index
+                if (valueAtIndex2 === '1') {
+                    cells[2].style.display = 'none';
+                }
+                
+                // Log what we found
+                console.log(`Row ${indexIn}: Found value '${valueAtIndex2}' at 3rd cell`);
+            }
+        }
+    }, [indexIn, column]);
 
     const handleClose = () => {
         setShow(false)
@@ -205,11 +228,25 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             console.log("Object keys:", Object.keys(dataRow));
         }
         
+        const orderedColumns = [
+            "date", 
+            "center", 
+            "client", 
+            "cost", // amount with taxes
+            // amount without taxes is added dynamically after cost
+            "worker", 
+            "taxes", 
+            "typeOfTransaction", 
+            "typeOfMovement", 
+            "frequency", 
+            "typeOfClient", 
+            "service"
+        ];
+
         return (
             <>
                 {(user.isAdmin || user._id == dataRow.worker) && (
-                    <tr onClick={handleShow}>
-                        {/* Checkbox cell */}
+                    <tr onClick={handleShow} ref={rowRef}>
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                             <input
                                 type="checkbox"
@@ -225,68 +262,36 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                             />
                         </td>
                         
-                        {/* Index cell - this is the row number, not from data */}
+                        {/* Index cell - this is the row number */}
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                         
-                        {/* Date cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("date", dataRow.date)}
-                        </td>
+                        {/* We need to include the problematic index cell so our DOM manipulation works */}
+                        {dataRow.index && (
+                            <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                {dataRow.index}
+                            </td>
+                        )}
                         
-                        {/* Center cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("center", dataRow.center)}
-                        </td>
-                        
-                        {/* Client cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("client", dataRow.client)}
-                        </td>
-                        
-                        {/* Amount with taxes cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("cost", dataRow.cost)}
-                        </td>
-                        
-                        {/* Amount without taxes cell */}
-                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
-                        </td>
-                        
-                        {/* Worker cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("worker", dataRow.worker)}
-                        </td>
-                        
-                        {/* Taxes cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("taxes", dataRow.taxes)}
-                        </td>
-                        
-                        {/* Type of transaction cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("typeOfTransaction", dataRow.typeOfTransaction)}
-                        </td>
-                        
-                        {/* Type of movement cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("typeOfMovement", dataRow.typeOfMovement)}
-                        </td>
-                        
-                        {/* Frequency cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("frequency", dataRow.frequency)}
-                        </td>
-                        
-                        {/* Type of client cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("typeOfClient", dataRow.typeOfClient)}
-                        </td>
-                        
-                        {/* Service cell */}
-                        <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {findCorrectValue("service", dataRow.service)}
-                        </td>
+                        {orderedColumns.map((key, index) => {
+                            // Skip the index field itself since we handle it separately
+                            if (key === 'index') return null;
+                            
+                            const value = dataRow[key];
+                            
+                            return (
+                                <React.Fragment key={`cell-${index}`}>
+                                    <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                        {findCorrectValue(key, value)}
+                                    </td>
+
+                                    {key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                            {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
+                                        </td>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
                     </tr>
                 )}
 
@@ -304,7 +309,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
     return (
     <>
         {(column != "transaction" || (user.isAdmin || user._id == dataRow.worker)) && (
-            <tr onClick={handleShow}>
+            <tr onClick={handleShow} ref={rowRef}>
                 {column == "transaction" && (
                     <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                         <input
@@ -324,21 +329,14 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                 <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                 
                 {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                    // For transactions, also exclude the 'index' field that has redundant values
-                    const updatedDeleteColumns = [...deleteColumns];
-                    if (column === "transaction" && !updatedDeleteColumns.includes('index')) {
-                        updatedDeleteColumns.push('index');
-                    }
-                    
-                    // Skip any field that is or appears to be an index field
-                    if (!updatedDeleteColumns.includes(key) && index !== 0 && key !== 'index' && !key.toLowerCase().includes('index')) {
+                    if (!deleteColumns.includes(key) && index !== 0) {
                         return (
                             <React.Fragment key={`header-${index}`}>
                                 <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                                     {findCorrectValue(key, value)}
                                 </td>
 
-                                {column === "transaction" && key === "cost" && !updatedDeleteColumns.includes("amountWithTaxes") && (
+                                {column === "transaction" && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
                                     <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} key={`amount-with-taxes-${index}`}>
                                         {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
                                     </td>
