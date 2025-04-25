@@ -205,6 +205,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             updatedDeleteColumns.push('index');
         }
         
+        // Debug: log the first transaction to understand its structure
+        if (indexIn === 1) {
+            console.log("Transaction object structure:", dataRow);
+            console.log("Object keys:", Object.keys(dataRow));
+        }
+        
         const orderedColumns = [
             "date", 
             "center", 

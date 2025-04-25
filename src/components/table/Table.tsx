@@ -1,9 +1,15 @@
 import {TableHead} from "./TableHead"
 import {TableRow} from "./TableRow"
 import './Table.css';
-
+import React from 'react';
 
 export function Table({ column, data, resetDataFunc, user, filters, columnFilters, deleteFunction, toggleAllLines, deleteLines }: { column: string, data: any, resetDataFunc: any, user: any, filters: any, columnFilters: any, deleteFunction: any, toggleAllLines: any, deleteLines: any }) {
+    const foundClient: string[] = []
+    const foundCenter: string[] = []
+    const foundWorker: string[] = []
+    const foundService: string[] = []
+    const [filteredData, setFilteredData] = React.useState<any>([])
+
     const deleteColumns: string[] = [
         "_id",
         "__v",
@@ -49,7 +55,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
             entityMappings.services[service._id] = service.name || 'Unknown Service';
         });
     }
-    
+
     // Map workers (users)
     if (data.users && Array.isArray(data.users)) {
         data.users.forEach((worker: any) => {
@@ -79,6 +85,95 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
 
         return true
     }
+
+    React.useEffect(() => {
+        if (data[column]) {
+            let tmp: any = []
+
+            let valid: string[] = []
+            if (column == "transaction") {
+                valid = filters.center.concat(filters.client).concat(filters.worker).concat(filters.service)
+            }
+            
+            for (let i = 0; i < data[column].length; i++) {
+                let line = data[column][i]
+                if ((valid.length == 0 || column != "transaction") ||
+                    ((filters.center.length == 0 || filters.center.includes(line.center)) &&
+                        (filters.client.length == 0 || filters.client.includes(line.client)) &&
+                        (filters.worker.length == 0 || filters.worker.includes(line.worker)) &&
+                        (filters.service.length == 0 || filters.service.includes(line.service))))
+                    tmp.push(line)
+                
+                if (column == "transaction") {
+                    if (line.client != undefined && !foundClient.includes(line.client))
+                        foundClient.push(line.client)
+                    if (line.center != undefined && !foundCenter.includes(line.center))
+                        foundCenter.push(line.center)
+                    if (line.worker != undefined && !foundWorker.includes(line.worker))
+                        foundWorker.push(line.worker)
+                    if (line.service != undefined && !foundService.includes(line.service))
+                        foundService.push(line.service)
+                }
+            }
+
+            // Check if additional column-specific filters are active
+            if (column === "transaction" && columnFilters && columnFilters.length > 0) {
+                tmp = tmp.filter((transaction: any) => {
+                    // Apply each column filter
+                    for (const filter of columnFilters) {
+                        const { column, value, operator } = filter;
+                        
+                        // Skip if the column doesn't exist on the transaction
+                        if (!(column in transaction)) continue;
+                        
+                        const transactionValue = transaction[column];
+                        
+                        // Apply the appropriate comparison based on operator
+                        switch (operator) {
+                            case 'equals':
+                                if (transactionValue !== value) return false;
+                                break;
+                            case 'notEquals':
+                                if (transactionValue === value) return false;
+                                break;
+                            case 'contains':
+                                if (!String(transactionValue).includes(value)) return false;
+                                break;
+                            case 'notContains':
+                                if (String(transactionValue).includes(value)) return false;
+                                break;
+                            case 'startsWith':
+                                if (!String(transactionValue).startsWith(value)) return false;
+                                break;
+                            case 'endsWith':
+                                if (!String(transactionValue).endsWith(value)) return false;
+                                break;
+                            // Add more operators as needed
+                            default:
+                                break;
+                        }
+                    }
+                    
+                    // If we reach here, all filters have passed
+                    return true;
+                });
+            }
+            
+            setFilteredData(tmp)
+        }
+    }, [data, column, filters, columnFilters])
+
+    // Add debug effect
+    React.useEffect(() => {
+        if (column === "transaction" && data[column]?.length > 0) {
+            console.log(
+                "Table component - transaction object keys:", 
+                Object.keys(data[column][0]),
+                "deleteColumns:", 
+                deleteColumns
+            );
+        }
+    }, [column, data, deleteColumns]);
 
     return (
         <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
