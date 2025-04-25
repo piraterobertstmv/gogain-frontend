@@ -4,13 +4,15 @@ import React from 'react';
 
 export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { column: string, objKeys: any, deleteColumns: string[], toggleAllLines: any }) {
     if (column === "transaction") {
-        // Define the correct column order for transactions - REMOVE INDEX from here
-        const orderedColumns = [
+        // IMPORTANT: We're removing the second Index column entirely
+        const transactionFieldOrder = [
+            "checkbox", // This is the checkbox column
+            "rowIndex", // This is our manually added row index, not from the data
             "date", 
             "center", 
             "client", 
             "cost", // amount with taxes
-            // amount without taxes is added dynamically after cost
+            "amountWithoutTaxes", // amount without taxes is added manually
             "worker", 
             "taxes", 
             "typeOfTransaction", 
@@ -20,15 +22,10 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
             "service"
         ];
 
-        // Add 'index' to deleteColumns if it's not already there
-        const updatedDeleteColumns = [...deleteColumns];
-        if (!updatedDeleteColumns.includes('index')) {
-            updatedDeleteColumns.push('index');
-        }
-
         return (
             <thead>
                 <tr>
+                    {/* Checkbox column */}
                     <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                         <input
                             type="checkbox"
@@ -37,29 +34,68 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
                         />
                     </th>
                     
-                    {/* This is the only Index column we want to keep */}
+                    {/* Index column (only one) */}
                     <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>Index</th>
                     
-                    {orderedColumns.map((colKey, index) => {
-                        // Skip any column that is or appears to be an index column or is in deleteColumns
-                        if (updatedDeleteColumns.includes(colKey) || colKey === 'index' || colKey.toLowerCase().includes('index')) {
-                            return null;
-                        }
-
-                        return (
-                            <React.Fragment key={`header-${index}`}>
-                                <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
-                                    {colKey === "cost" ? "Amount with taxes" : formatString(colKey)}
-                                </th>
-
-                                {colKey === "cost" && !updatedDeleteColumns.includes("amountWithTaxes") && (
-                                    <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
-                                        Amount without taxes
-                                    </th>
-                                )}
-                            </React.Fragment>
-                        );
-                    })}
+                    {/* Date column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("date")}
+                    </th>
+                    
+                    {/* Center column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("center")}
+                    </th>
+                    
+                    {/* Client column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("client")}
+                    </th>
+                    
+                    {/* Amount with taxes column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        Amount with taxes
+                    </th>
+                    
+                    {/* Amount without taxes column */}
+                    <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        Amount without taxes
+                    </th>
+                    
+                    {/* Worker column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("worker")}
+                    </th>
+                    
+                    {/* Taxes column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("taxes")}
+                    </th>
+                    
+                    {/* Type of transaction column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("typeOfTransaction")}
+                    </th>
+                    
+                    {/* Type of movement column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("typeOfMovement")}
+                    </th>
+                    
+                    {/* Frequency column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("frequency")}
+                    </th>
+                    
+                    {/* Type of client column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("typeOfClient")}
+                    </th>
+                    
+                    {/* Service column */}
+                    <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                        {formatString("service")}
+                    </th>
                 </tr>
             </thead>
         );
