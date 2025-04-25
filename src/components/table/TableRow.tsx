@@ -245,12 +245,14 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                             />
                         </td>
                         
-                        {/* This is the generated index for display, not from the data */}
+                        {/* This is the only Index cell we want to show */}
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                         
                         {orderedColumns.map((key, index) => {
-                            // Skip the database index field which shows all "1"s
-                            if (updatedDeleteColumns.includes(key) || key === 'index') return null;
+                            // Skip any column that is or appears to be an index column or is in deleteColumns
+                            if (updatedDeleteColumns.includes(key) || key === 'index' || key.toLowerCase().includes('index')) {
+                                return null;
+                            }
                             
                             const value = dataRow[key];
                             
@@ -311,8 +313,8 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         updatedDeleteColumns.push('index');
                     }
                     
-                    // Skip the database index field which shows all "1"s 
-                    if (!updatedDeleteColumns.includes(key) && index !== 0 && key !== 'index') {
+                    // Skip any field that is or appears to be an index field
+                    if (!updatedDeleteColumns.includes(key) && index !== 0 && key !== 'index' && !key.toLowerCase().includes('index')) {
                         return (
                             <React.Fragment key={`header-${index}`}>
                                 <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>

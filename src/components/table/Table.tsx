@@ -175,6 +175,21 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
         }
     }, [column, data, deleteColumns]);
 
+    // Add debug output for first transaction
+    if (column === "transaction" && data[column]?.length > 0) {
+        console.log("First transaction:", data[column][0]);
+    }
+    
+    // Find any additional index-like fields that need to be excluded
+    if (column === "transaction" && data[column]?.length > 0) {
+        const firstTransaction = data[column][0];
+        Object.keys(firstTransaction).forEach(key => {
+            if (key.toLowerCase().includes('index') && !deleteColumns.includes(key)) {
+                deleteColumns.push(key);
+            }
+        });
+    }
+
     return (
         <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
             <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>

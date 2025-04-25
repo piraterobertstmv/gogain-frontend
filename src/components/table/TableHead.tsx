@@ -4,7 +4,7 @@ import React from 'react';
 
 export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { column: string, objKeys: any, deleteColumns: string[], toggleAllLines: any }) {
     if (column === "transaction") {
-        // Define the correct column order for transactions
+        // Define the correct column order for transactions - REMOVE INDEX from here
         const orderedColumns = [
             "date", 
             "center", 
@@ -37,12 +37,12 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
                         />
                     </th>
                     
-                    {/* Keep only one index column - this is the row number */}
+                    {/* This is the only Index column we want to keep */}
                     <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>Index</th>
                     
                     {orderedColumns.map((colKey, index) => {
-                        // Skip the database index field which shows all "1"s
-                        if (updatedDeleteColumns.includes(colKey) || colKey === 'index') {
+                        // Skip any column that is or appears to be an index column or is in deleteColumns
+                        if (updatedDeleteColumns.includes(colKey) || colKey === 'index' || colKey.toLowerCase().includes('index')) {
                             return null;
                         }
 
@@ -81,7 +81,8 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
 
                 <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>Index</th>
                 {objKeys.map((objKey: string, index: number) => {
-                    if (!deleteColumns.includes(objKey)) {
+                    // For non-transaction tables, also filter out any index-like columns
+                    if (!deleteColumns.includes(objKey) && objKey !== 'index' && !objKey.toLowerCase().includes('index')) {
                         return (
                             <React.Fragment key={`header-${index}`}>
                                 <th scope="col" style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
