@@ -20,6 +20,12 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
             "service"
         ];
 
+        // Add 'index' to deleteColumns if it's not already there
+        const updatedDeleteColumns = [...deleteColumns];
+        if (!updatedDeleteColumns.includes('index')) {
+            updatedDeleteColumns.push('index');
+        }
+
         return (
             <thead>
                 <tr>
@@ -34,7 +40,7 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
                     <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>Index</th>
                     
                     {orderedColumns.map((colKey, index) => {
-                        if (deleteColumns.includes(colKey)) {
+                        if (updatedDeleteColumns.includes(colKey)) {
                             return null;
                         }
 
@@ -44,7 +50,7 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
                                     {colKey === "cost" ? "Amount with taxes" : formatString(colKey)}
                                 </th>
 
-                                {colKey === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                {colKey === "cost" && !updatedDeleteColumns.includes("amountWithTaxes") && (
                                     <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
                                         Amount without taxes
                                     </th>

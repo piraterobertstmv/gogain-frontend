@@ -200,10 +200,10 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
     // For transaction tables, use the defined column order
     if (column === "transaction") {
         // Define a list of fields that should be excluded from display
-        const excludedFields = [
-            ...deleteColumns,
-            "index" // Exclude the redundant index field that shows all "1"s
-        ];
+        const updatedDeleteColumns = [...deleteColumns];
+        if (!updatedDeleteColumns.includes('index')) {
+            updatedDeleteColumns.push('index');
+        }
         
         const orderedColumns = [
             "date", 
@@ -241,7 +241,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                         
                         {orderedColumns.map((key, index) => {
-                            if (excludedFields.includes(key)) return null;
+                            if (updatedDeleteColumns.includes(key)) return null;
                             
                             const value = dataRow[key];
                             
@@ -251,7 +251,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                                         {findCorrectValue(key, value)}
                                     </td>
 
-                                    {key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                    {key === "cost" && !updatedDeleteColumns.includes("amountWithTaxes") && (
                                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                                             {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
                                         </td>
@@ -296,14 +296,20 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                 <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                 
                 {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                    if (!deleteColumns.includes(key) && index !== 0) {
+                    // For transactions, also exclude the 'index' field that has redundant values
+                    const updatedDeleteColumns = [...deleteColumns];
+                    if (column === "transaction" && !updatedDeleteColumns.includes('index')) {
+                        updatedDeleteColumns.push('index');
+                    }
+                    
+                    if (!updatedDeleteColumns.includes(key) && index !== 0) {
                         return (
                             <React.Fragment key={`header-${index}`}>
                                 <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                                     {findCorrectValue(key, value)}
                                 </td>
 
-                                {column === "transaction" && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                {column === "transaction" && key === "cost" && !updatedDeleteColumns.includes("amountWithTaxes") && (
                                     <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} key={`amount-with-taxes-${index}`}>
                                         {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
                                     </td>
