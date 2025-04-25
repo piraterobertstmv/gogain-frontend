@@ -244,10 +244,13 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                                 aria-label={`Select transaction ${indexIn}`}
                             />
                         </td>
+                        
+                        {/* This is the generated index for display, not from the data */}
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                         
                         {orderedColumns.map((key, index) => {
-                            if (updatedDeleteColumns.includes(key)) return null;
+                            // Skip the database index field which shows all "1"s
+                            if (updatedDeleteColumns.includes(key) || key === 'index') return null;
                             
                             const value = dataRow[key];
                             
@@ -308,7 +311,8 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         updatedDeleteColumns.push('index');
                     }
                     
-                    if (!updatedDeleteColumns.includes(key) && index !== 0) {
+                    // Skip the database index field which shows all "1"s 
+                    if (!updatedDeleteColumns.includes(key) && index !== 0 && key !== 'index') {
                         return (
                             <React.Fragment key={`header-${index}`}>
                                 <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>

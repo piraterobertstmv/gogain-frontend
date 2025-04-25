@@ -37,10 +37,12 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
                         />
                     </th>
                     
+                    {/* Keep only one index column - this is the row number */}
                     <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>Index</th>
                     
                     {orderedColumns.map((colKey, index) => {
-                        if (updatedDeleteColumns.includes(colKey)) {
+                        // Skip the database index field which shows all "1"s
+                        if (updatedDeleteColumns.includes(colKey) || colKey === 'index') {
                             return null;
                         }
 
