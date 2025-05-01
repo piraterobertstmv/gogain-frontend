@@ -348,34 +348,11 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
           // Use data directly with no modification
           setExtractedText(filteredData);
           
-          // Create objects with absolutely no data transformation
-          const headers = filteredData[0];
-          const dataRows = filteredData.slice(1);
-          
-          const parsedObjects = dataRows.map((row, _) => {
-            const obj: Record<string, any> = {};
-            headers.forEach((header, index) => {
-              if (index < row.length) {
-                obj[header] = row[index];
-              } else {
-                obj[header] = '';
-              }
-            });
-            return obj;
-          });
-          
-          // Filter out objects that don't have any meaningful data
-          const validObjects = parsedObjects.filter(obj => 
-            Object.values(obj).some(val => val !== undefined && val !== null && val !== '')
-          );
-          
-          console.log("Parsed objects:", validObjects.length);
-          
           // Set field mappings...
           const initialMappings: Record<string, string | number> = {};
 
           // Auto-map based on similar field names
-          headers.forEach((header, index) => {
+          filteredData[0].forEach((header: string, index: number) => {
             if (!header) return;
             
             const headerLower = String(header).toLowerCase();
@@ -657,23 +634,11 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       console.log("Headers:", headers);
       console.log("Data rows:", dataRows.length);
       
-      const parsedObjects = dataRows.map((row, _) => {
-        const obj: Record<string, any> = {};
-        headers.forEach((header, index) => {
-          if (index < row.length) {
-            obj[header] = row[index];
-          } else {
-            obj[header] = '';
-          }
-        });
-        return obj;
-      });
-      
       // Set field mappings
       const initialMappings: Record<string, string | number> = {};
 
       // Auto-map based on similar field names
-      headers.forEach((header, index) => {
+      headers.forEach((header: string, index: number) => {
         if (!header) return;
         
         const headerLower = String(header).toLowerCase();
