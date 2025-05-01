@@ -54,7 +54,6 @@ interface PdfTransactionImporterProps {
 export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: PdfTransactionImporterProps) {
   const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState<string[][]>([]);
-  const [parsedData, setParsedData] = useState<any[]>([]);
   const [mappedData, setMappedData] = useState<any[]>([]);
   const [fieldMappings, setFieldMappings] = useState<Record<string, string | number>>({});
   const [step, setStep] = useState(1);
@@ -371,7 +370,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
           );
           
           console.log("Parsed objects:", validObjects.length);
-          setParsedData(validObjects);
           
           // Set field mappings...
           const initialMappings: Record<string, string | number> = {};
@@ -510,7 +508,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
           const tableData = [['Raw Text'], ...rows.map(row => [row])];
           
           setExtractedText(tableData);
-          setParsedData([{ 'Raw Text': rawText }]);
           
           // Set minimal field mappings for fallback
           setFieldMappings({
@@ -672,8 +669,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         return obj;
       });
       
-      setParsedData(parsedObjects);
-      
       // Set field mappings
       const initialMappings: Record<string, string | number> = {};
 
@@ -724,7 +719,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       if (text.length > 0) {
         const fallbackRows = [['Raw Text'], [text]];
         setExtractedText(fallbackRows);
-        setParsedData([{ 'Raw Text': text }]);
         setStep(2);
       }
     }
@@ -1306,7 +1300,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   const resetState = () => {
     setFile(null);
     setExtractedText([]);
-    setParsedData([]);
     setMappedData([]);
     setFieldMappings({});
     setStep(1);

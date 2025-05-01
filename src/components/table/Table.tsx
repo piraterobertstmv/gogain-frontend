@@ -8,7 +8,6 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     const foundCenter: string[] = []
     const foundWorker: string[] = []
     const foundService: string[] = []
-    const [filteredData, setFilteredData] = React.useState<any>([])
 
     const deleteColumns: string[] = [
         "_id",
@@ -159,7 +158,8 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                 });
             }
             
-            setFilteredData(tmp)
+            // Skip updating the filteredData since it's not used
+            // setFilteredData(tmp)
         }
     }, [data, column, filters, columnFilters])
 

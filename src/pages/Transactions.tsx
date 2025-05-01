@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ButtonsRadio } from "../components/ButtonsRadio"
 import { DatabaseForm } from "../components/popup/DatabaseForm";
 import { Table } from "../components/table/Table"
