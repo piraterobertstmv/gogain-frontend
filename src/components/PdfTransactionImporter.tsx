@@ -711,9 +711,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   const processMapping = () => {
     if (Object.keys(fieldMappings).length === 0) {
       setError('Please map at least one field before proceeding');
-      return;
-    }
-    
+        return;
+      }
+      
     try {
       setIsLoading(true);
       setProgress(50);
@@ -1058,12 +1058,12 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 </option>
               ))}
             </Form.Select>
-          </Alert>
+        </Alert>
         )}
         
         <Table striped bordered hover size="sm" responsive>
-          <thead>
-            <tr>
+            <thead>
+              <tr>
               <th>Index</th>
               <th>Date</th>
               <th>Client</th>
@@ -1071,9 +1071,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
               <th>Service</th>
               <th>Amount</th>
               <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
+              </tr>
+            </thead>
+            <tbody>
             {preparedTransactions
               .filter((transaction): transaction is Record<string, any> => transaction !== null)
               .map((transaction, index) => (
@@ -1087,8 +1087,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                   <td>{transaction.typeOfTransaction}</td>
                 </tr>
               ))}
-          </tbody>
-        </Table>
+            </tbody>
+          </Table>
         
         <div className="d-flex justify-content-between mt-3">
           <Button variant="secondary" onClick={() => setStep(2)}>
@@ -1482,15 +1482,15 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                   
                   // For all other fields
                   return (
-                    <Form.Group className="mb-3" key={field.key}>
-                      <Form.Label>{field.label}</Form.Label>
-                      <Form.Select
-                        value={fieldMappings[field.key]?.toString() || ''}
-                        onChange={(e) => updateFieldMapping(field.key, e.target.value)}
-                      >
+                  <Form.Group className="mb-3" key={field.key}>
+                    <Form.Label>{field.label}</Form.Label>
+                    <Form.Select
+                      value={fieldMappings[field.key]?.toString() || ''}
+                      onChange={(e) => updateFieldMapping(field.key, e.target.value)}
+                    >
                         {renderFieldSelector(field.key)}
-                      </Form.Select>
-                    </Form.Group>
+                    </Form.Select>
+                  </Form.Group>
                   );
                 })}
                 
@@ -1531,31 +1531,31 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       <Modal.Footer>
         {step === 1 && (
           <>
-            <Button 
-              variant="secondary" 
-              onClick={onHide}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={file ? parsePdf : () => {}}
-              disabled={!file || isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Spinner
-                    as="span"
-                    animation="border"
-                    size="sm"
-                    role="status"
-                    aria-hidden="true"
-                    className="me-2"
-                  />
-                  Processing...
-                </>
-              ) : 'Process PDF'}
-            </Button>
+        <Button 
+          variant="secondary" 
+          onClick={onHide}
+        >
+          Cancel
+        </Button>
+          <Button 
+            variant="primary" 
+            onClick={file ? parsePdf : () => {}}
+            disabled={!file || isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Spinner
+                  as="span"
+                  animation="border"
+                  size="sm"
+                  role="status"
+                  aria-hidden="true"
+                  className="me-2"
+                />
+                Processing...
+              </>
+            ) : 'Process PDF'}
+          </Button>
           </>
         )}
 

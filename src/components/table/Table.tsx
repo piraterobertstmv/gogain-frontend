@@ -159,6 +159,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
             }
             
             // Skip updating the filteredData since it's not used
+            // This variable was removed to fix TypeScript build errors (TS6133)
             // setFilteredData(tmp)
         }
     }, [data, column, filters, columnFilters])

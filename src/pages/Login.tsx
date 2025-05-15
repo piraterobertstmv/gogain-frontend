@@ -13,8 +13,26 @@ export function Login({setUser}: {setUser: any}) {
         
         console.log('Attempting login with:', { email });
         console.log('API URL:', import.meta.env.VITE_API_URL);
+        
+        // Add more debugging information
+        console.log('Full API endpoint:', `${import.meta.env.VITE_API_URL}users/login`);
+        console.log('Environment:', import.meta.env.MODE);
 
         try {
+            // Add a fetch to check if the backend is reachable
+            console.log('Testing backend connection...');
+            try {
+                const testResponse = await fetch(`${import.meta.env.VITE_API_URL}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                console.log('Backend connection test result:', testResponse.ok, testResponse.status);
+            } catch (testError) {
+                console.error('Backend connection test failed:', testError);
+            }
+
             const response = await fetch(`${import.meta.env.VITE_API_URL}users/login`, {
                 method: 'POST',
                 headers: {
