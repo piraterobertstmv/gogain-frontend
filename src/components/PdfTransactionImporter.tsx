@@ -884,56 +884,16 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   
   // Helper function for field selector rendering
   const renderFieldSelector = (fieldKey: string) => {
-    if (fieldKey === 'service') {
-      // Special handling for service field
-      return (
-        <Form.Group key={fieldKey} className="mb-3">
-          <Form.Label>Service Field</Form.Label>
-          <Form.Select 
-            value={fieldMappings[fieldKey] || ''}
-            onChange={(e) => updateFieldMapping(fieldKey, e.target.value)}
-          >
-            <option value="">-- Select Column --</option>
-            {extractedText[0]?.map((header, index) => (
-              <option key={index} value={index}>{header}</option>
-            ))}
-            <option value="manual">Select Service Manually</option>
-          </Form.Select>
-          
-          {fieldMappings[fieldKey] === 'manual' && (
-            <Form.Select 
-              className="mt-2"
-              onChange={(e) => {
-                const updatedMappings = {...fieldMappings};
-                updatedMappings[`${fieldKey}_manual`] = e.target.value;
-                setFieldMappings(updatedMappings);
-              }}
-            >
-              <option value="">-- Select Service --</option>
-              {data.service?.map((service: any) => (
-                <option key={service._id} value={service._id}>
-                  {service.name}
-                </option>
-              ))}
-            </Form.Select>
-          )}
-        </Form.Group>
-      );
-    }
-    
     return (
-      <Form.Group key={fieldKey} className="mb-3">
-        <Form.Label>{fieldKey === 'costWithTaxes' ? 'Amount with taxes' : fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1).replace(/([A-Z])/g, ' $1')}</Form.Label>
-        <Form.Select 
-          value={fieldMappings[fieldKey] || ''}
-          onChange={(e) => updateFieldMapping(fieldKey, e.target.value)}
-        >
-          <option value="">-- Select Column --</option>
-          {extractedText[0]?.map((header, index) => (
-            <option key={index} value={index}>{header}</option>
-          ))}
-        </Form.Select>
-      </Form.Group>
+      <>
+        <option value="">-- Select Column --</option>
+        {extractedText[0]?.map((header, index) => (
+          <option key={index} value={index}>{header}</option>
+        ))}
+        {fieldKey === 'service' && (
+          <option value="manual">Select Service Manually</option>
+        )}
+      </>
     );
   };
   
@@ -1058,12 +1018,12 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 </option>
               ))}
             </Form.Select>
-        </Alert>
+          </Alert>
         )}
         
         <Table striped bordered hover size="sm" responsive>
-            <thead>
-              <tr>
+          <thead>
+            <tr>
               <th>Index</th>
               <th>Date</th>
               <th>Client</th>
@@ -1071,9 +1031,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
               <th>Service</th>
               <th>Amount</th>
               <th>Type</th>
-              </tr>
-            </thead>
-            <tbody>
+            </tr>
+          </thead>
+          <tbody>
             {preparedTransactions
               .filter((transaction): transaction is Record<string, any> => transaction !== null)
               .map((transaction, index) => (
@@ -1087,8 +1047,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                   <td>{transaction.typeOfTransaction}</td>
                 </tr>
               ))}
-            </tbody>
-          </Table>
+          </tbody>
+        </Table>
         
         <div className="d-flex justify-content-between mt-3">
           <Button variant="secondary" onClick={() => setStep(2)}>
@@ -1458,50 +1418,46 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 <h5>Map Fields</h5>
                 <p className="text-muted">Select which column contains each field shown in the transaction table</p>
                 
-                {requiredFields.map(field => {
-                  // Special handling for service field to make it more visible
-                  if (field.key === 'service') {
-                    return (
-                      <Form.Group className="mb-3" key={field.key}>
-                        <Form.Label>
-                          {field.label} <span className="text-muted">(Select column containing service information)</span>
-                        </Form.Label>
-                        <Form.Select
-                          value={fieldMappings[field.key]?.toString() || ''}
-                          onChange={(e) => updateFieldMapping(field.key, e.target.value)}
-                          className="mb-2"
-                        >
-                          {renderFieldSelector(field.key)}
-                        </Form.Select>
-                        <Form.Text className="text-info">
-                          Select the column that contains service names, or use the default service if not available in your data
-                        </Form.Text>
-                      </Form.Group>
-                    );
-                  }
-                  
-                  // For all other fields
-                  return (
-                  <Form.Group className="mb-3" key={field.key}>
-                    <Form.Label>{field.label}</Form.Label>
-                    <Form.Select
-                      value={fieldMappings[field.key]?.toString() || ''}
-                      onChange={(e) => updateFieldMapping(field.key, e.target.value)}
-                    >
+                <Form>
+                  {requiredFields.map(field => (
+                    <Form.Group className="mb-3" key={field.key}>
+                      <Form.Label>{field.label}</Form.Label>
+                      <Form.Select
+                        value={fieldMappings[field.key]?.toString() || ''}
+                        onChange={(e) => updateFieldMapping(field.key, e.target.value)}
+                      >
                         {renderFieldSelector(field.key)}
-                    </Form.Select>
-                  </Form.Group>
-                  );
-                })}
-                
-                <div className="d-flex justify-content-between mt-4">
-                  <Button variant="secondary" onClick={() => setStep(1)}>
-                    Back
-                  </Button>
-                  <Button variant="primary" onClick={processMapping}>
-                    Continue to Review
-                  </Button>
-                </div>
+                      </Form.Select>
+                      {field.key === 'service' && fieldMappings[field.key] === 'manual' && (
+                        <Form.Select 
+                          className="mt-2"
+                          value={fieldMappings[`${field.key}_manual`]?.toString() || ''}
+                          onChange={(e) => {
+                            const updatedMappings = {...fieldMappings};
+                            updatedMappings[`${field.key}_manual`] = e.target.value;
+                            setFieldMappings(updatedMappings);
+                          }}
+                        >
+                          <option value="">-- Select Service --</option>
+                          {data.service?.map((service: any) => (
+                            <option key={service._id} value={service._id}>
+                              {service.name}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      )}
+                    </Form.Group>
+                  ))}
+                  
+                  <div className="d-flex justify-content-between mt-4">
+                    <Button variant="secondary" onClick={() => setStep(1)}>
+                      Back
+                    </Button>
+                    <Button variant="primary" onClick={processMapping}>
+                      Continue to Review
+                    </Button>
+                  </div>
+                </Form>
               </>
             )}
           </>
