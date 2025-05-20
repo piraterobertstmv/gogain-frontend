@@ -1,7 +1,7 @@
-import { PieChart, Cell, Pie, ResponsiveContainer, Sector } from "recharts";
+import { PieChart, Cell, Pie, ResponsiveContainer } from "recharts";
 
 const RADIAN = Math.PI / 180;
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, index } : { cx: any, cy: any, midAngle: any, innerRadius: any, outerRadius: any, percent: any, index: any}) => {
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent } : { cx: any, cy: any, midAngle: any, innerRadius: any, outerRadius: any, percent: any}) => {
   // Calculate the position for the label outside the pie
   const radius = outerRadius * 1.2;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -61,7 +61,6 @@ export function CustomPieChart({ dataChart, centers } : { dataChart: any, center
               cx="50%" 
               cy="50%" 
               outerRadius={70}
-              innerRadius={0}
               paddingAngle={1}
               labelLine={true}
               label={renderCustomizedLabel}

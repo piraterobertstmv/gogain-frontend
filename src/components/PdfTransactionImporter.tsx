@@ -931,7 +931,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   };
   
   // Helper function for field selector rendering
-  const renderFieldSelector = (fieldKey: string) => {
+  const renderFieldSelector = () => {
     return (
       <>
         <option value="">-- Select Column --</option>
@@ -1443,7 +1443,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                       value={fieldMappings[field.key]?.toString() || ''}
                       onChange={(e) => updateFieldMapping(field.key, e.target.value)}
                     >
-                        {renderFieldSelector(field.key)}
+                        {renderFieldSelector()}
                     </Form.Select>
                   </Form.Group>
                 ))}

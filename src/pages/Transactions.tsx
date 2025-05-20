@@ -192,7 +192,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     const exportToExcel = async () => {
         try {
-            const response = await fetch(`${apiUrl}/transaction/export`, {
+            await fetch(`${apiUrl}/transaction/export`, {
                 // ... existing code ...
             });
         } catch (error) {
