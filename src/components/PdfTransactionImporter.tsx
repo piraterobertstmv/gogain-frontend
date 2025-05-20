@@ -363,9 +363,24 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
               if (field.key === 'index') return;
               
               const fieldLower = field.label.toLowerCase();
+              const fieldKeyLower = field.key.toLowerCase();
+              
+              // Special handling for service column - prioritize service matching
+              if (field.key === 'service' && (
+                  headerLower === 'service' ||
+                  headerLower === 'services' ||
+                  headerLower === 'service name' ||
+                  headerLower === 'description' ||
+                  headerLower.includes('service') ||
+                  headerLower.includes('description')
+              )) {
+                initialMappings[field.key] = index;
+                console.log(`Mapped service field to column "${header}" (${index})`);
+                return;
+              }
               
               // Exact match
-              if (headerLower === fieldLower || headerLower === field.key.toLowerCase()) {
+              if (headerLower === fieldLower || headerLower === fieldKeyLower) {
                 initialMappings[field.key] = index;
               }
               // Contains match (if no exact match was found)
@@ -831,30 +846,45 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         const date = row.date || new Date().toISOString().split('T')[0];
         const clientInput = row.client || '';
         const centerInput = row.center || '';
-        const serviceInput = row.service || fieldMappings['service_manual'] || '';
+        const serviceInput = row.service || '';
         
         // Look up IDs or use existing IDs
         const clientId = isValidObjectId(clientInput) ? clientInput : findClientId(clientInput);
         const centerId = isValidObjectId(centerInput) ? centerInput : findCenterId(centerInput);
         const serviceId = isValidObjectId(serviceInput) ? serviceInput : findServiceId(serviceInput);
         
+        // Get cost from the row data (if available) or default to 0
+        let cost = 0;
+        if (row.costWithTaxes) {
+          cost = parseFloat(String(row.costWithTaxes)) || 0;
+        } else if (row.cost) {
+          cost = parseFloat(String(row.cost)) || 0;
+        }
+        
+        // Get taxes from the row data or default to 0
+        let taxes = parseFloat(String(row.taxes || 0));
+        
         // Start building the transaction
         const transaction: Record<string, any> = {
           date: date,
           // Set the worker to the current user if not specified
           worker: row.worker || user._id,
-          cost: parseFloat(String(row.costWithTaxes || row.cost || 0)),
-          taxes: parseFloat(String(row.taxes || 0)),
+          cost: cost,
+          taxes: taxes,
           typeOfTransaction: row.typeOfTransaction || 'income',
           typeOfMovement: row.typeOfMovement || 'unique',
           frequency: row.frequency || 'daily',
           typeOfClient: row.typeOfClient || 'professional',
-          index: lastTransactionIndex + index + 1
+          index: lastTransactionIndex + index + 1 // Start from the last transaction index + 1
         };
         
         // Add client details
         if (clientId) {
           transaction.client = clientId;
+          // Store original client name for display purposes
+          if (clientInput && typeof clientInput === 'string') {
+            transaction.originalClientName = clientInput;
+          }
         } else if (clientInput) {
           transaction.originalClientName = clientInput;
         }
@@ -862,6 +892,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         // Add center details
         if (centerId) {
           transaction.center = centerId;
+          if (centerInput && typeof centerInput === 'string') {
+            transaction.originalCenterName = centerInput;
+          }
         } else if (centerInput) {
           transaction.originalCenterName = centerInput;
         }
@@ -869,12 +902,27 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         // Add service details
         if (serviceId) {
           transaction.service = serviceId;
+          if (serviceInput && typeof serviceInput === 'string') {
+            transaction.originalServiceName = serviceInput;
+          }
+          
+          // Only use the service's default cost if the transaction doesn't have one
+          if (cost === 0 && serviceId) {
+            const serviceObj = data.service?.find((s: any) => s._id === serviceId);
+            if (serviceObj && serviceObj.cost) {
+              transaction.cost = parseFloat(String(serviceObj.cost)) || 0;
+            }
+            
+            if (serviceObj && serviceObj.tax && taxes === 0) {
+              transaction.taxes = parseFloat(String(serviceObj.tax)) || 0;
+            }
+          }
         } else if (serviceInput) {
           transaction.originalServiceName = serviceInput;
         }
         
         console.log(`Prepared transaction ${index}:`, transaction);
-        return transaction;
+      return transaction;
       } catch (error) {
         console.error(`Error preparing transaction ${index}:`, error);
         return null;
@@ -890,9 +938,6 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         {extractedText[0]?.map((header, index) => (
           <option key={index} value={index}>{header}</option>
         ))}
-        {fieldKey === 'service' && (
-          <option value="manual">Select Service Manually</option>
-        )}
       </>
     );
   };
@@ -908,17 +953,18 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
     
     const getClientDisplayName = (transaction: any): string => {
       if (transaction.client && transaction.originalClientName) {
+        // Try to find client name in data
         const client = data.client?.find((c: any) => c._id === transaction.client);
         if (client) {
-          return `${client.firstName} ${client.lastName} (Mapped from: ${transaction.originalClientName})`;
-        } else {
-          return `ID: ${transaction.client} (Mapped from: ${transaction.originalClientName})`;
+          return `${client.firstName} ${client.lastName}`;
         }
+        // If we can't find the client in data, use the original name from input
+        return transaction.originalClientName;
       } else if (transaction.client) {
         const client = data.client?.find((c: any) => c._id === transaction.client);
         return client ? `${client.firstName} ${client.lastName}` : `ID: ${transaction.client}`;
       } else if (transaction.originalClientName) {
-        return `${transaction.originalClientName} (Not mapped)`;
+        return transaction.originalClientName;
       }
       return 'No Client';
     };
@@ -927,15 +973,14 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       if (transaction.center && transaction.originalCenterName) {
         const center = data.center?.find((c: any) => c._id === transaction.center);
         if (center) {
-          return `${center.name} (Mapped from: ${transaction.originalCenterName})`;
-        } else {
-          return `ID: ${transaction.center} (Mapped from: ${transaction.originalCenterName})`;
+          return center.name;
         }
+        return transaction.originalCenterName;
       } else if (transaction.center) {
         const center = data.center?.find((c: any) => c._id === transaction.center);
         return center ? center.name : `ID: ${transaction.center}`;
       } else if (transaction.originalCenterName) {
-        return `${transaction.originalCenterName} (Not mapped)`;
+        return transaction.originalCenterName;
       }
       return 'No Center';
     };
@@ -944,18 +989,15 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       if (transaction.service && transaction.originalServiceName) {
         const service = data.service?.find((s: any) => s._id === transaction.service);
         if (service) {
-          return `${service.name} (Mapped from: ${transaction.originalServiceName})`;
-        } else {
-          return `ID: ${transaction.service} (Mapped from: ${transaction.originalServiceName})`;
+          return service.name;
         }
+        // Use original service name if we can't find the service in data
+        return transaction.originalServiceName;
       } else if (transaction.service) {
         const service = data.service?.find((s: any) => s._id === transaction.service);
         return service ? service.name : `ID: ${transaction.service}`;
       } else if (transaction.originalServiceName) {
-        return `${transaction.originalServiceName} (Not mapped)`;
-      } else if (fieldMappings['service_manual']) {
-        const service = data.service?.find((s: any) => s._id === fieldMappings['service_manual']);
-        return service ? `${service.name} (Manual selection)` : `ID: ${fieldMappings['service_manual']} (Manual selection)`;
+        return transaction.originalServiceName;
       }
       return 'No Service';
     };
@@ -996,34 +1038,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
         <h4>Review Transactions ({preparedTransactions.length})</h4>
         <p>Total Amount: €{totalAmount}</p>
         
-        {/* Manual service selection if it hasn't been done yet */}
-        {!fieldMappings['service'] && !fieldMappings['service_manual'] && (
-          <Alert variant="warning" className="mb-3">
-            <Alert.Heading>Service Selection Required</Alert.Heading>
-            <p>
-              You haven't selected a service for these transactions. Please select a service below:
-            </p>
-            <Form.Select 
-              onChange={(e) => {
-                const updatedMappings = {...fieldMappings};
-                updatedMappings['service_manual'] = e.target.value;
-                setFieldMappings(updatedMappings);
-              }}
-              className="mt-2 mb-3"
-            >
-              <option value="">-- Select Service --</option>
-              {data.service?.map((service: any) => (
-                <option key={service._id} value={service._id}>
-                  {service.name}
-                </option>
-              ))}
-            </Form.Select>
-          </Alert>
-        )}
-        
         <Table striped bordered hover size="sm" responsive>
-          <thead>
-            <tr>
+            <thead>
+              <tr>
               <th>Index</th>
               <th>Date</th>
               <th>Client</th>
@@ -1031,9 +1048,9 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
               <th>Service</th>
               <th>Amount</th>
               <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
+              </tr>
+            </thead>
+            <tbody>
             {preparedTransactions
               .filter((transaction): transaction is Record<string, any> => transaction !== null)
               .map((transaction, index) => (
@@ -1047,8 +1064,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                   <td>{transaction.typeOfTransaction}</td>
                 </tr>
               ))}
-          </tbody>
-        </Table>
+            </tbody>
+          </Table>
         
         <div className="d-flex justify-content-between mt-3">
           <Button variant="secondary" onClick={() => setStep(2)}>
@@ -1058,7 +1075,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
             <Button 
               variant="primary" 
               onClick={handleSubmit} 
-              disabled={isLoading || preparedTransactions.length === 0 || (!fieldMappings['service'] && !fieldMappings['service_manual'])}
+              disabled={isLoading || preparedTransactions.length === 0}
               className="me-2"
             >
               {isLoading ? (
@@ -1084,79 +1101,47 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   };
   
   const handleSubmit = async () => {
-    try {
+    if (step !== 3) {
+      console.error("Submit called when not on review step");
+      return;
+    }
+    
       setIsLoading(true);
+    setProgress(0);
       setError(null);
       
+    try {
       // Final validation of transactions
-      const finalValidTransactions = mappedData.filter((transaction: any) => {
+      const preparedTransactions = prepareTransactionData();
+      const finalValidTransactions = preparedTransactions.filter((transaction: any) => {
         // Ensure required fields are present
-        return transaction.date && transaction.client && transaction.center && 
-               transaction.service && transaction.index;
+        return transaction.date && (transaction.client || transaction.originalClientName) && 
+              (transaction.center || transaction.originalCenterName) && 
+              (transaction.service || transaction.originalServiceName);
       });
       
       if (finalValidTransactions.length === 0) {
         setError("No valid transactions to submit. Please check your data and try again.");
+        setIsLoading(false);
         return;
       }
       
       console.log("Submitting transactions to API:", finalValidTransactions.length);
       
-      // Prepare transactions with only the mapped fields - don't add extra fields
-      const backendReadyTransactions = finalValidTransactions.map(transaction => {
-        // Create a new object to avoid mutating the original
-        const backendTransaction = { ...transaction };
-        
-        // Ensure index is included and is a number
-        backendTransaction.index = Number(backendTransaction.index);
-        
-        // Convert date from DD/MM/YYYY to ISO format YYYY-MM-DD if needed
-        if (backendTransaction.date && typeof backendTransaction.date === 'string') {
-          // Save original for display
-          backendTransaction.originalDateFormat = backendTransaction.date;
-          
-          // Parse DD/MM/YYYY to ISO only if it matches the pattern
-          const parts = backendTransaction.date.split('/');
-          if (parts.length === 3) {
-            const day = parts[0];
-            const month = parts[1];
-            const year = parts[2];
-            backendTransaction.date = new Date(`${year}-${month}-${day}`);
-          }
-        }
-        
-        // Include only the necessary naming fields for display
-        if (backendTransaction.originalClientName) {
-          backendTransaction.clientName = backendTransaction.originalClientName;
-        }
-        
-        if (backendTransaction.originalCenterName) {
-          backendTransaction.centerName = backendTransaction.originalCenterName;
-        }
-        
-        if (backendTransaction.originalServiceName) {
-          backendTransaction.serviceName = backendTransaction.originalServiceName;
-        }
-        
-        return backendTransaction;
-      });
+      // Create a local URL for development
+      const apiUrl = 'http://localhost:3001/';
       
-      console.log("Backend ready transactions:", backendReadyTransactions);
-      
-      // Standard API call with no special parameters
-      const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/batch`, {
-        method: "POST",
+      const response = await fetch(`${apiUrl}transactions/batch`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
-        body: JSON.stringify({ 
-          transactions: backendReadyTransactions
-        })
+        body: JSON.stringify({ transactions: finalValidTransactions })
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         setError(`API Error: ${errorData.message || response.statusText}`);
         setIsLoading(false);
         return;
@@ -1166,7 +1151,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       
       console.log("API Response:", result);
       
-      setSuccess(`Successfully imported ${result.insertedCount} transactions.`);
+      setSuccess(`Successfully imported ${result.insertedCount || finalValidTransactions.length} transactions.`);
       setIsLoading(false);
       
       // Call onSuccess handler to refresh the main view
@@ -1247,24 +1232,44 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   // Fetch the last transaction index from the API
   const fetchLastTransactionIndex = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/last-index`, {
-        method: "GET",
+      // Create a local URL for development
+      const apiUrl = 'http://localhost:3001/';
+      
+      // First try to get the last index from the API
+      const response = await fetch(`${apiUrl}transactions/last-index`, {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
       
       if (response.ok) {
         const data = await response.json();
+        console.log("Fetched last transaction index from API:", data.lastIndex);
         setLastTransactionIndex(data.lastIndex || 0);
-        console.log("Fetched last transaction index:", data.lastIndex);
       } else {
-        console.error("Failed to fetch last transaction index");
-        setLastTransactionIndex(0);
+        console.warn("Failed to fetch last transaction index from API, falling back to local data");
+        
+        // Fallback: Calculate from the local data
+        const maxIndex = data.transaction?.reduce((max: number, t: any) => {
+          const index = parseInt(t.index);
+          return isNaN(index) ? max : Math.max(max, index);
+        }, 0) || 0;
+        
+        console.log("Calculated last transaction index from local data:", maxIndex);
+        setLastTransactionIndex(maxIndex);
       }
     } catch (error) {
       console.error("Error fetching last transaction index:", error);
-      setLastTransactionIndex(0);
+      
+      // Fallback: Calculate from the local data
+      const maxIndex = data.transaction?.reduce((max: number, t: any) => {
+        const index = parseInt(t.index);
+        return isNaN(index) ? max : Math.max(max, index);
+      }, 0) || 0;
+      
+      console.log("Calculated last transaction index from local data due to error:", maxIndex);
+      setLastTransactionIndex(maxIndex);
     }
   };
   
@@ -1370,19 +1375,31 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 <Table striped bordered hover size="sm">
                   <thead>
                     <tr>
-                      {extractedText[0]?.map((header, index) => (
-                        header && header.trim() !== "" ? 
-                          <th key={index}>{header}</th> :
-                          <th key={index}>Column {index+1}</th>
-                      ))}
+                      {extractedText[0]?.map((header, index) => {
+                        // Skip columns that are named "Column 12" or "Column 13" or are empty
+                        if (header === "Column 12" || header === "Column 13" || header.trim() === "") {
+                          return null;
+                        }
+                        return (
+                          <th key={index}>
+                            {header && header.trim() !== "" ? header : `Column ${index+1}`}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
                     {extractedText.slice(1).map((row, rowIndex) => (
                       <tr key={rowIndex}>
-                        {row.map((cell, cellIndex) => (
-                          <td key={cellIndex}>{cell}</td>
-                        ))}
+                        {row.map((cell, cellIndex) => {
+                          // Skip cells that correspond to columns named "Column 12" or "Column 13"
+                          if (extractedText[0][cellIndex] === "Column 12" || 
+                              extractedText[0][cellIndex] === "Column 13" ||
+                              extractedText[0][cellIndex].trim() === "") {
+                            return null;
+                          }
+                          return <td key={cellIndex}>{cell}</td>;
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -1419,44 +1436,26 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                 <p className="text-muted">Select which column contains each field shown in the transaction table</p>
                 
                 <Form>
-                  {requiredFields.map(field => (
-                    <Form.Group className="mb-3" key={field.key}>
-                      <Form.Label>{field.label}</Form.Label>
-                      <Form.Select
-                        value={fieldMappings[field.key]?.toString() || ''}
-                        onChange={(e) => updateFieldMapping(field.key, e.target.value)}
-                      >
+                {requiredFields.map(field => (
+                  <Form.Group className="mb-3" key={field.key}>
+                    <Form.Label>{field.label}</Form.Label>
+                    <Form.Select
+                      value={fieldMappings[field.key]?.toString() || ''}
+                      onChange={(e) => updateFieldMapping(field.key, e.target.value)}
+                    >
                         {renderFieldSelector(field.key)}
-                      </Form.Select>
-                      {field.key === 'service' && fieldMappings[field.key] === 'manual' && (
-                        <Form.Select 
-                          className="mt-2"
-                          value={fieldMappings[`${field.key}_manual`]?.toString() || ''}
-                          onChange={(e) => {
-                            const updatedMappings = {...fieldMappings};
-                            updatedMappings[`${field.key}_manual`] = e.target.value;
-                            setFieldMappings(updatedMappings);
-                          }}
-                        >
-                          <option value="">-- Select Service --</option>
-                          {data.service?.map((service: any) => (
-                            <option key={service._id} value={service._id}>
-                              {service.name}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      )}
-                    </Form.Group>
-                  ))}
-                  
-                  <div className="d-flex justify-content-between mt-4">
-                    <Button variant="secondary" onClick={() => setStep(1)}>
-                      Back
-                    </Button>
-                    <Button variant="primary" onClick={processMapping}>
-                      Continue to Review
-                    </Button>
-                  </div>
+                    </Form.Select>
+                  </Form.Group>
+                ))}
+                
+                <div className="d-flex justify-content-between mt-4">
+                  <Button variant="secondary" onClick={() => setStep(1)}>
+                    Back
+                  </Button>
+                  <Button variant="primary" onClick={processMapping}>
+                    Continue to Review
+                  </Button>
+                </div>
                 </Form>
               </>
             )}

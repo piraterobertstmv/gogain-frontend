@@ -19,20 +19,45 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const responses = await Promise.all([
-                    fetch(`${import.meta.env.VITE_API_URL}transaction`),
-                    fetch(`${import.meta.env.VITE_API_URL}client`),
-                    fetch(`${import.meta.env.VITE_API_URL}users`),
-                    fetch(`${import.meta.env.VITE_API_URL}center`),
-                    fetch(`${import.meta.env.VITE_API_URL}service`),
-                    fetch(`${import.meta.env.VITE_API_URL}costs`)
+                // Use localhost URL directly for development
+                const apiUrl = 'http://localhost:3001/';
+                
+                const [transactions, clients, users, centers, services, costs] = await Promise.all([
+                    fetch(`${apiUrl}transaction`),
+                    fetch(`${apiUrl}client`),
+                    fetch(`${apiUrl}users`),
+                    fetch(`${apiUrl}center`),
+                    fetch(`${apiUrl}service`),
+                    fetch(`${apiUrl}costs`)
                 ]);
 
-                const results = await Promise.all(responses.map(r => r.json()));
+                const results = await Promise.all([
+                    transactions.json(),
+                    clients.json(),
+                    users.json(),
+                    centers.json(),
+                    services.json(),
+                    costs.json()
+                ]);
+                
+                // Sort clients by first name
+                const sortedClients = results[1].client ? [...results[1].client].sort((a, b) => {
+                    // Sort by firstName (case-insensitive)
+                    return a.firstName.toLowerCase().localeCompare(b.firstName.toLowerCase());
+                }) : [];
+                
+                // Sort transactions by date (oldest to newest)
+                const sortedTransactions = results[0].transactions ? [...results[0].transactions].sort((a, b) => {
+                    // Parse dates - handle both string dates and Date objects
+                    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+                    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+                    // Sort ascending (oldest first)
+                    return dateA.getTime() - dateB.getTime();
+                }) : [];
                 
                 setData({
-                    transaction: results[0].transactions || [],
-                    client: results[1].client || [],
+                    transaction: sortedTransactions,
+                    client: sortedClients,
                     users: results[2].users || [],
                     center: results[3].center || [],
                     service: results[4].service || [],

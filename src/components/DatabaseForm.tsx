@@ -35,7 +35,10 @@ export function DatabaseForm({ data, closePopupFunc, user, onSuccess }: Database
 
     const handleSubmit = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}transaction`, {
+            // Use localhost URL directly for development
+            const apiUrl = 'http://localhost:3001/';
+            
+            const response = await fetch(`${apiUrl}transaction`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -10,6 +10,7 @@ import { PdfTransactionImporter } from '../components/PdfTransactionImporter';
 import { Toast, ToastContainer } from "react-bootstrap";
 import './Transactions.css';
 import React from 'react';
+import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
 
 // function toCamelCaseArray(names: string[]): string[] {
 //     return names.map(name =>
@@ -89,16 +90,13 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         });
     };
 
+    const apiUrl = 'http://localhost:3001';
+
     async function deleteSelectedTransaction(selectedId: string) {
         try {
-            // Fix URL formatting by ensuring there's no double slash
-            const baseUrl = import.meta.env.VITE_API_URL.endsWith('/') 
-                ? import.meta.env.VITE_API_URL.slice(0, -1) 
-                : import.meta.env.VITE_API_URL;
-                
-            console.log(`Deleting transaction ${selectedId} with URL: ${baseUrl}/transaction/${selectedId}`);
+            console.log(`Deleting transaction ${selectedId} with URL: ${apiUrl}/transaction/${selectedId}`);
             
-            const response = await fetch(`${baseUrl}/transaction/${selectedId}`, {
+            const response = await fetch(`${apiUrl}/transaction/${selectedId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -192,8 +190,60 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         }
     }, [data]);
 
+    const exportToExcel = async () => {
+        try {
+            const response = await fetch(`${apiUrl}/transaction/export`, {
+                // ... existing code ...
+            });
+        } catch (error) {
+            console.error('Error exporting to Excel:', error);
+        }
+    };
+
+    // Floating scroll buttons state
+    const [showScrollUp, setShowScrollUp] = useState(false);
+    const [showScrollDown, setShowScrollDown] = useState(false);
+    const scrollDivRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleScroll = () => {
+            const div = scrollDivRef.current;
+            if (!div) return;
+            const scrollTop = div.scrollTop;
+            const clientHeight = div.clientHeight;
+            const scrollHeight = div.scrollHeight;
+            setShowScrollUp(scrollTop > 100);
+            setShowScrollDown(scrollTop + clientHeight < scrollHeight - 100);
+        };
+        const div = scrollDivRef.current;
+        if (div) {
+            div.addEventListener('scroll', handleScroll);
+            handleScroll();
+        }
+        return () => {
+            if (div) div.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
+
+    const handleScrollToTop = () => {
+        if (scrollDivRef.current) {
+            scrollDivRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+    const handleScrollToBottom = () => {
+        if (scrollDivRef.current) {
+            scrollDivRef.current.scrollTo({ top: scrollDivRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    };
+    const handleKeyDownUp = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') handleScrollToTop();
+    };
+    const handleKeyDownDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') handleScrollToBottom();
+    };
+
     return <>
-    <div className='p-5' style={{height: "100vh", overflow:"auto"}}>
+    <div ref={scrollDivRef} className='p-5' style={{height: "100vh", overflow:"auto"}}>
         <div style={{ display: "flex", alignItems: "center" }}>
             <ButtonsRadio buttonsName={buttonsName} onChangeFunction={setIdButtons} selectedButton={idButtons}/>
             <Button className='m-2'style={{ borderRadius: "25px", backgroundColor: "#F2F2F2", color:"#706762", borderColor: 'transparent', height: "33px", width: "33px", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={handleShow}>
@@ -217,13 +267,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 <i className="fas fa-file-pdf me-2"></i>
                 Import from PDF
             </Button>
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginTop: "1vh"  }}>
-            <MultiFilterInput name='Center' data={data}  availableFilters={centerIds}  modifyFilter={setFiltersCenter}/>
-            <MultiFilterInput name='Client' data={data}  availableFilters={clientIds}  modifyFilter={setFiltersClient}/>
-            <MultiFilterInput name='Worker' data={data}  availableFilters={workerIds}  modifyFilter={setFiltersWorker}/>
-            <MultiFilterInput name='Service' data={data} availableFilters={serviceIds} modifyFilter={setFiltersService}/>
             <button 
                 className={deleteLines.length === 0 ? "logout-button-grey" : "logout-button"} 
                 onClick={() => deleteSelectedTransactions(deleteLines)}
@@ -231,6 +274,25 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             >
                 {isDeleting ? 'Deleting...' : `Delete${deleteLines.length > 0 ? ` (${deleteLines.length})` : ''}`}
             </button>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginTop: "1vh" }}>
+            <MultiFilterInput name='Center' data={data}  availableFilters={centerIds}  modifyFilter={setFiltersCenter}/>
+            <MultiFilterInput name='Client' data={data}  availableFilters={clientIds}  modifyFilter={setFiltersClient}/>
+            <MultiFilterInput name='Worker' data={data}  availableFilters={workerIds}  modifyFilter={setFiltersWorker}/>
+            <MultiFilterInput name='Service' data={data} availableFilters={serviceIds} modifyFilter={setFiltersService}/>
+            {showScrollDown && (
+                <button
+                    className="ml-auto bg-white rounded-full shadow p-2 flex items-center justify-center hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="Scroll to bottom"
+                    tabIndex={0}
+                    onClick={handleScrollToBottom}
+                    onKeyDown={handleKeyDownDown}
+                    style={{ height: '33px', width: '33px' }}
+                >
+                    <FaArrowDown className="w-5 h-5 text-gray-700" />
+                </button>
+            )}
         </div>
 
         <ToastContainer position="top-end" className="p-3 mt-5" style={{ zIndex: 1050 }}>
@@ -277,6 +339,19 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         />
         
         <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
+
+        {/* Floating Scroll Buttons */}
+        {showScrollUp && (
+            <button
+                className="fixed bottom-20 right-6 z-50 bg-white rounded-full shadow-lg p-3 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label="Scroll to top"
+                tabIndex={0}
+                onClick={handleScrollToTop}
+                onKeyDown={handleKeyDownUp}
+            >
+                <FaArrowUp className="w-5 h-5 text-gray-700" />
+            </button>
+        )}
     </div>
     </>
 }

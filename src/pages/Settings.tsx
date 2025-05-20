@@ -14,7 +14,10 @@ export function Settings({ user } : { user: any }) {
         }
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}users/${user._id}`, {
+            // Use localhost URL directly for development
+            const apiUrl = 'http://localhost:3001/';
+            
+            const response = await fetch(`${apiUrl}users/${user._id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',

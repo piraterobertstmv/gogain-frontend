@@ -135,7 +135,10 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         }
         
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}transactions/batch`, {
+            // Use localhost URL directly for development
+            const apiUrl = 'http://localhost:3001/';
+            
+            const response = await fetch(`${apiUrl}transactions/batch`, {
                 method: "POST",
                 headers: {
                     'Content-Type': 'application/json',

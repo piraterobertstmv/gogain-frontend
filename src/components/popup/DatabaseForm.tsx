@@ -101,6 +101,20 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return true
         }
 
+        if (columnName === "service" && "name" in dataToSendApi) {
+            if (!dataToSendApi.name || dataToSendApi.name.trim() === "") {
+                tmpErr["name"] = "Service name cannot be empty"
+            }
+            if (!("cost" in dataToSendApi) || dataToSendApi.cost === "" || isNaN(Number(dataToSendApi.cost))) {
+                addOrModifyValueInBodyApi("cost", "0");
+            }
+            if (!("tax" in dataToSendApi) || dataToSendApi.tax === "" || isNaN(Number(dataToSendApi.tax))) {
+                addOrModifyValueInBodyApi("tax", "0");
+            }
+            setErr(tmpErr);
+            return Object.keys(tmpErr).length === 0;
+        }
+
         if (defaultValue === null) {
             Object.entries(formTemplate[columnName]).forEach(([key]: [string, any]) => {
                 if (!(key in dataToSendApi) && (key != "costWithout")) {
@@ -169,16 +183,25 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
         const fetchData = async () => {
             try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL}${colNameDb}/${defaultValue._id}`, {
+                // Use localhost URL directly for development
+                const apiUrl = 'http://localhost:3001/';
+                
+                const response = await fetch(`${apiUrl}${colNameDb}/${defaultValue._id}`, {
                     method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    }
                 });
 
                 if (!response.ok) {
-                    throw new Error('Network response was not ok')
+                    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                    console.error('Server error:', errorData);
+                    throw new Error(errorData.message || 'Network response was not ok');
                 }
                 closePopupFunc()
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error:', error);
+                alert(`Failed to delete: ${error.message || 'Unknown error'}`);
             }
         }
         await fetchData()
@@ -217,21 +240,27 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return;
 
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}${colNameDb}${isModifyOrNew}`, {
+            // Use localhost URL directly for development
+            const apiUrl = 'http://localhost:3001/';
+            
+            const response = await fetch(`${apiUrl}${colNameDb}${isModifyOrNew}`, {
                 method: isModifyOrNew === "" ? "POST" : "PATCH",
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                 },
                 body: JSON.stringify(dataToSendApi)
             })
 
             if (!response.ok) {
-                throw new Error('Network response was not ok')
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                console.error('Server error:', errorData);
+                throw new Error(errorData.message || 'Network response was not ok');
             }
             closePopupFunc()
-        } catch (error) {
-            //alert('Something is wrong with the API call');
+        } catch (error: any) {
             console.error('Error:', error);
+            alert(`Failed to save: ${error.message || 'Unknown error'}`);
         }
     }
 

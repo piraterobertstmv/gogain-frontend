@@ -5,17 +5,26 @@ import { Login } from './pages/Login'
 
 function App() {
     const [user, setUser] = useState<any>({});
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            fetchUserData(token);
-        }
+        getUser();
     }, [])
 
-    const fetchUserData = async (token: string) => {
+    const getUser = async () => {
+        // Return if no token
+        const token = localStorage.getItem('authToken')
+        if (!token) {
+            setLoading(false)
+            return
+        }
+
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}users/me`, {
+            // Use localhost URL directly for development
+            const apiUrl = 'http://localhost:3001/';
+            
+            const response = await fetch(`${apiUrl}users/me`, {
+                method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -29,12 +38,16 @@ function App() {
         } catch (error) {
             console.error('Failed to fetch user data:', error);
             localStorage.removeItem('authToken');
+        } finally {
+            setLoading(false);
         }
     }
 
     return (
         <>
-            {Object.keys(user).length === 0 ? (
+            {loading ? (
+                <p>Loading...</p>
+            ) : Object.keys(user).length === 0 ? (
                 <Login setUser={setUser} />
             ) : (
                 <Application user={user} setUser={setUser}/>

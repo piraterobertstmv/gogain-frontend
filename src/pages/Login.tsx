@@ -12,17 +12,19 @@ export function Login({setUser}: {setUser: any}) {
         e.preventDefault();
         
         console.log('Attempting login with:', { email });
-        console.log('API URL:', import.meta.env.VITE_API_URL);
+        // Use localhost URL directly for development
+        const apiUrl = 'http://localhost:3001/';
+        console.log('API URL:', apiUrl);
         
         // Add more debugging information
-        console.log('Full API endpoint:', `${import.meta.env.VITE_API_URL}users/login`);
+        console.log('Full API endpoint:', `${apiUrl}users/login`);
         console.log('Environment:', import.meta.env.MODE);
 
         try {
             // Add a fetch to check if the backend is reachable
             console.log('Testing backend connection...');
             try {
-                const testResponse = await fetch(`${import.meta.env.VITE_API_URL}`, {
+                const testResponse = await fetch(`${apiUrl}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -33,7 +35,7 @@ export function Login({setUser}: {setUser: any}) {
                 console.error('Backend connection test failed:', testError);
             }
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL}users/login`, {
+            const response = await fetch(`${apiUrl}users/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
