@@ -2,7 +2,17 @@ import { PieChart, Cell, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { findNameWithId } from '../../tools/tools';
 
 export function CustomPieChart({ dataChart, centers, data } : { dataChart: any, centers: string[], data?: any }) {
-    const colors = ["#FF9D70", "#FFDDCD", "#E5AB90", "#CA7852", "#202864", "#5461C7", "#6CBDFF", "#5396D4"];
+    // Updated color palette with more distinct, higher-contrast colors
+    const colors = [
+        "#FF6B6B", // bright red
+        "#4ECDC4", // teal
+        "#FFD166", // yellow
+        "#6A0572", // purple
+        "#1A535C", // dark teal
+        "#3A86FF", // bright blue
+        "#8338EC", // violet
+        "#FF9F1C"  // orange
+    ];
 
     // Filter out any data points with zero value
     const filteredData = dataChart.filter((data: any) => data.value !== 0);
@@ -75,23 +85,26 @@ export function CustomPieChart({ dataChart, centers, data } : { dataChart: any, 
                 flexDirection: 'row', 
                 flexWrap: 'wrap',
                 justifyContent: 'center',
-                fontSize: '11px',
-                marginTop: '5px'
+                fontSize: '12px',
+                marginTop: '10px',
+                gap: '8px'
             }}>
                 {dataWithPercent.map((entry: any, index: number) => (
                     <div key={`legend-${index}`} style={{ 
                         display: 'flex', 
                         alignItems: 'center', 
-                        margin: '0 4px 4px 0',
                         backgroundColor: 'white',
-                        padding: '2px 4px',
-                        borderRadius: '4px'
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        border: `1px solid ${colors[centers.indexOf(entry.name) % 8]}`,
+                        boxShadow: '0px 1px 3px rgba(0,0,0,0.1)'
                     }}>
                         <div style={{ 
-                            width: '8px', 
-                            height: '8px', 
+                            width: '12px', 
+                            height: '12px', 
                             backgroundColor: colors[centers.indexOf(entry.name) % 8],
-                            marginRight: '4px'
+                            marginRight: '6px',
+                            borderRadius: '2px'
                         }} />
                         <span style={{ fontWeight: 'bold' }}>{entry.percent}%</span>
                     </div>

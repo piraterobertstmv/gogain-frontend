@@ -48,8 +48,27 @@ export function PiePlotRevenue({ data, dataFiltered, dataFilteredCumul, funcFilt
         setCheckboxs(initialCheckboxState)
     }
 
-    const colors = ["FF9D70", "FFDDCD", "E5AB90", "CA7852", "202864", "5461C7", "6CBDFF", "5396D4"]
-    const colorsStroke = ["D95213", "E9A98C", "BF8062", "934F30", "141940", "29358F", "3284C7", "2E6293"]
+    const colors = [
+        "FF6B6B", // bright red
+        "4ECDC4", // teal
+        "FFD166", // yellow
+        "6A0572", // purple
+        "1A535C", // dark teal
+        "3A86FF", // bright blue
+        "8338EC", // violet
+        "FF9F1C"  // orange
+    ];
+    
+    const colorsStroke = [
+        "D64545", // darker red
+        "36B5AD", // darker teal
+        "EAB934", // darker yellow
+        "4A035C", // darker purple
+        "0A333A", // darker teal
+        "2065CC", // darker blue
+        "6022C3", // darker violet
+        "D97F06"  // darker orange
+    ];
 
     const styleBut: string[] = ["1px solid #DEDEDE", "1px solid #D95213"]
 
