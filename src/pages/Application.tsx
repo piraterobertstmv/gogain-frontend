@@ -19,18 +19,34 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Use localhost URL directly for development
-                const apiUrl = 'http://localhost:3001/';
+                // Use environment variable for API URL instead of hardcoded localhost
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+                console.log('Application: Using API URL:', apiUrl);
+                
+                // Get the authentication token
+                const token = localStorage.getItem('authToken');
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+                
+                // Log headers for debugging
+                console.log('Using headers:', headers);
                 
                 const [transactions, clients, users, centers, services, costs] = await Promise.all([
-                    fetch(`${apiUrl}transaction`),
-                    fetch(`${apiUrl}client`),
-                    fetch(`${apiUrl}users`),
-                    fetch(`${apiUrl}center`),
-                    fetch(`${apiUrl}service`),
-                    fetch(`${apiUrl}costs`)
+                    fetch(`${apiUrl}transaction`, { headers }),
+                    fetch(`${apiUrl}client`, { headers }),
+                    fetch(`${apiUrl}users`, { headers }),
+                    fetch(`${apiUrl}center`, { headers }),
+                    fetch(`${apiUrl}service`, { headers }),
+                    fetch(`${apiUrl}costs`, { headers })
                 ]);
 
+                // Log responses for debugging
+                console.log('Transaction response:', transactions.status, transactions.ok);
+                console.log('Client response:', clients.status, clients.ok);
+                console.log('Users response:', users.status, users.ok);
+                
                 const results = await Promise.all([
                     transactions.json(),
                     clients.json(),
@@ -39,6 +55,16 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     services.json(),
                     costs.json()
                 ]);
+                
+                // Log the results
+                console.log('Fetched data:', {
+                    transactions: results[0].transactions?.length || 0,
+                    clients: results[1].client?.length || 0,
+                    users: results[2].users?.length || 0,
+                    centers: results[3].center?.length || 0,
+                    services: results[4].service?.length || 0,
+                    costs: results[5].costs?.length || 0
+                });
                 
                 // Sort clients by first name
                 const sortedClients = results[1].client ? [...results[1].client].sort((a, b) => {

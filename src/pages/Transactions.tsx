@@ -27,11 +27,63 @@ import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
 // }
 
 export function Transactions({ data, reloadData, user } : { data: any, reloadData: () => void, user: any }) {
-    // function getFalseKeys(obj: { [key: string]: boolean }): string[] {
-    //     return Object.keys(obj)
-    //         .filter(key => obj[key] === false) // Filter for false values
-    //         .map(key => key === "Amount with taxes" ? "cost" : key); // Replace "Amount with taxes" with "cost"
-    // }
+    // Add debug console logs
+    console.log('Transactions component loaded');
+    console.log('Data received:', data);
+    console.log('User:', user);
+    
+    // Log transaction data specifically
+    if (data && data.transaction) {
+        console.log(`Transaction count: ${data.transaction.length}`);
+        if (data.transaction.length > 0) {
+            console.log('First transaction:', data.transaction[0]);
+        } else {
+            console.log('No transactions found in data');
+        }
+    } else {
+        console.log('No transaction data available');
+    }
+    
+    // Check backend API connection
+    React.useEffect(() => {
+        const checkBackend = async () => {
+            try {
+                // Use environment variable for API URL
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+                console.log('Checking backend connection to:', apiUrl);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                console.log('Backend connection result:', response.status, response.ok);
+                
+                // If we have the auth token, try to load transactions directly
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    const transResponse = await fetch(`${apiUrl}transactions`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                    });
+                    if (transResponse.ok) {
+                        const transData = await transResponse.json();
+                        console.log('Transactions API response:', transData);
+                    } else {
+                        console.error('Failed to fetch transactions from API:', transResponse.status);
+                    }
+                }
+            } catch (error) {
+                console.error('Backend connection check failed:', error);
+            }
+        };
+        
+        checkBackend();
+    }, []);
 
     const [show, setShow] = useState(false);
     const handleShow = () => setShow(true);
@@ -94,12 +146,13 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
-            console.log(`Deleting transaction ${selectedId} with URL: ${apiUrl}/transaction/${selectedId}`);
+            console.log(`Deleting transaction ${selectedId} with URL: ${apiUrl}transaction/${selectedId}`);
             
-            const response = await fetch(`${apiUrl}/transaction/${selectedId}`, {
+            const response = await fetch(`${apiUrl}transaction/${selectedId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                 },
             });
     
