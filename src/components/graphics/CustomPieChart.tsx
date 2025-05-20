@@ -1,4 +1,4 @@
-import { PieChart, Cell, Pie, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Cell, Pie, ResponsiveContainer, Tooltip } from "recharts";
 import { findNameWithId } from '../../tools/tools';
 
 export function CustomPieChart({ dataChart, centers, data } : { dataChart: any, centers: string[], data?: any }) {
