@@ -4,36 +4,55 @@ import { useState } from 'react';
 export function Settings({ user } : { user: any }) {
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+    const [message, setMessage] = useState<{text: string, type: 'success' | 'error'} | null>(null)
 
     const handleChangePassword = async (e: any) => {
         e.preventDefault();
+        setIsLoading(true);
+        setMessage(null);
 
         if (password.length < 8) {
-            alert('Password must have more than 8 characters')
+            setMessage({text: 'Password must have at least 8 characters', type: 'error'});
+            setIsLoading(false);
             return;
         }
 
         try {
-            // Use localhost URL directly for development
-            const apiUrl = 'http://localhost:3001/';
+            // Use environment variable for API URL instead of hardcoded localhost
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+            console.log('Settings: Using API URL for password change:', apiUrl);
+            
+            // Get authentication token
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                throw new Error('Authentication token not found');
+            }
             
             const response = await fetch(`${apiUrl}users/${user._id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ password }),
             });
     
+            console.log('Password change response status:', response.status);
+            
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(errorData.message || 'Password failed')
+                throw new Error(errorData.message || 'Password change failed')
             }
 
-            alert('Password successfully changed')
+            setMessage({text: 'Password successfully changed', type: 'success'});
+            setPassword(''); // Clear the password field after successful change
 
         } catch (error: any) {
-            alert('Password failed')
+            console.error('Password change error:', error);
+            setMessage({text: `Password change failed: ${error.message || 'Unknown error'}`, type: 'error'});
+        } finally {
+            setIsLoading(false);
         }
     };
     
@@ -66,8 +85,29 @@ export function Settings({ user } : { user: any }) {
                     {showPassword ? "Hide" : "Show"}
                 </button>
             </div>
-            <button className="logout-button" onClick={handleChangePassword}>
-                Change password
+            
+            {message && (
+                <div 
+                    style={{ 
+                        marginLeft: "2vw", 
+                        marginTop: "2vh", 
+                        padding: "10px", 
+                        borderRadius: "5px",
+                        backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
+                        color: message.type === 'success' ? '#155724' : '#721c24',
+                        border: `1px solid ${message.type === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+                    }}
+                >
+                    {message.text}
+                </div>
+            )}
+            
+            <button 
+                className="logout-button" 
+                onClick={handleChangePassword}
+                disabled={isLoading}
+            >
+                {isLoading ? 'Changing password...' : 'Change password'}
             </button>
         </div>
     </>
