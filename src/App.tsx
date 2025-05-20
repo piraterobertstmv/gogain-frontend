@@ -20,8 +20,9 @@ function App() {
         }
 
         try {
-            // Use localhost URL directly for development
-            const apiUrl = 'http://localhost:3001/';
+            // Use environment variable for API URL instead of localhost
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+            console.log('Using API URL:', apiUrl);
             
             const response = await fetch(`${apiUrl}users/me`, {
                 method: 'GET',

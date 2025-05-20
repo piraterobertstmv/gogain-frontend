@@ -90,7 +90,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         });
     };
 
-    const apiUrl = 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {

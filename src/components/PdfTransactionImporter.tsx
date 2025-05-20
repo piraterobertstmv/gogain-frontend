@@ -1128,8 +1128,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       
       console.log("Submitting transactions to API:", finalValidTransactions.length);
       
-      // Create a local URL for development
-      const apiUrl = 'http://localhost:3001/';
+      // Use environment variable for API URL instead of localhost
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
       
       const response = await fetch(`${apiUrl}transactions/batch`, {
         method: 'POST',
@@ -1232,8 +1232,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   // Fetch the last transaction index from the API
   const fetchLastTransactionIndex = async () => {
     try {
-      // Create a local URL for development
-      const apiUrl = 'http://localhost:3001/';
+      // Use environment variable for API URL instead of localhost
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
       
       // First try to get the last index from the API
       const response = await fetch(`${apiUrl}transactions/last-index`, {
