@@ -12,8 +12,8 @@ export function Login({setUser}: {setUser: any}) {
         e.preventDefault();
         
         console.log('Attempting login with:', { email });
-        // Use environment variable for API URL
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
+        // Use localhost URL directly for development
+        const apiUrl = 'http://localhost:3001/';
         console.log('API URL:', apiUrl);
         
         // Add more debugging information

@@ -90,7 +90,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         });
     };
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = 'http://localhost:3001';
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
@@ -189,6 +189,16 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             console.log('TRANSACTION KEYS:', Object.keys(data.transaction[0]));
         }
     }, [data]);
+
+    const exportToExcel = async () => {
+        try {
+            const response = await fetch(`${apiUrl}/transaction/export`, {
+                // ... existing code ...
+            });
+        } catch (error) {
+            console.error('Error exporting to Excel:', error);
+        }
+    };
 
     // Floating scroll buttons state
     const [showScrollUp, setShowScrollUp] = useState(false);

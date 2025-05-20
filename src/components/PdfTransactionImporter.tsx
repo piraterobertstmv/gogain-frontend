@@ -931,7 +931,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   };
   
   // Helper function for field selector rendering
-  const renderFieldSelector = () => {
+  const renderFieldSelector = (fieldKey: string) => {
     return (
       <>
         <option value="">-- Select Column --</option>
@@ -1128,8 +1128,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
       
       console.log("Submitting transactions to API:", finalValidTransactions.length);
       
-      // Use environment variable for API URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
+      // Create a local URL for development
+      const apiUrl = 'http://localhost:3001/';
       
       const response = await fetch(`${apiUrl}transactions/batch`, {
         method: 'POST',
@@ -1232,8 +1232,8 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
   // Fetch the last transaction index from the API
   const fetchLastTransactionIndex = async () => {
     try {
-      // Use environment variable for API URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
+      // Create a local URL for development
+      const apiUrl = 'http://localhost:3001/';
       
       // First try to get the last index from the API
       const response = await fetch(`${apiUrl}transactions/last-index`, {
@@ -1443,7 +1443,7 @@ export function PdfTransactionImporter({ show, onHide, onSuccess, data, user }: 
                       value={fieldMappings[field.key]?.toString() || ''}
                       onChange={(e) => updateFieldMapping(field.key, e.target.value)}
                     >
-                        {renderFieldSelector()}
+                        {renderFieldSelector(field.key)}
                     </Form.Select>
                   </Form.Group>
                 ))}
