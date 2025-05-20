@@ -1,74 +1,102 @@
-import { PieChart, Cell, Pie, ResponsiveContainer } from "recharts";
+import { PieChart, Cell, Pie, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { findNameWithId } from '../../tools/tools';
 
-const RADIAN = Math.PI / 180;
-const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, percent } : { cx: any, cy: any, midAngle: any, outerRadius: any, percent: any}) => {
-  // Calculate the position for the label outside the pie
-  const radius = outerRadius * 1.2;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  
-  // Calculate the end point for the connecting line
-  const lineEndRadius = outerRadius * 1.05;
-  const lineEndX = cx + lineEndRadius * Math.cos(-midAngle * RADIAN);
-  const lineEndY = cy + lineEndRadius * Math.sin(-midAngle * RADIAN);
-  
-  // Calculate the start point for the line (on the pie surface)
-  const lineStartRadius = outerRadius;
-  const lineStartX = cx + lineStartRadius * Math.cos(-midAngle * RADIAN);
-  const lineStartY = cy + lineStartRadius * Math.sin(-midAngle * RADIAN);
+export function CustomPieChart({ dataChart, centers, data } : { dataChart: any, centers: string[], data?: any }) {
+    const colors = ["#FF9D70", "#FFDDCD", "#E5AB90", "#CA7852", "#202864", "#5461C7", "#6CBDFF", "#5396D4"];
 
-  // Format percentage
-  const percentValue = (percent * 100).toFixed(0);
-  
-  return (
-    <g>
-      {/* Line connecting the pie to the label */}
-      <line 
-        x1={lineStartX} 
-        y1={lineStartY} 
-        x2={lineEndX} 
-        y2={lineEndY} 
-        stroke="#999999" 
-        strokeWidth={1} 
-      />
-      
-      {/* Percentage label */}
-      <text 
-        x={x} 
-        y={y} 
-        fill="#000000" 
-        textAnchor={x > cx ? 'start' : 'end'} 
-        dominantBaseline="central"
-        fontSize="12"
-        fontWeight="bold"
-      >
-        {`${percentValue}%`}
-      </text>
-    </g>
-  );
-};
-
-export function CustomPieChart({ dataChart, centers } : { dataChart: any, centers: string[] }) {
-    const colors = ["#FF9D70", "#FFDDCD", "#E5AB90", "#CA7852", "#202864", "#5461C7", "#6CBDFF", "#5396D4"]
-
+    // Filter out any data points with zero value
     const filteredData = dataChart.filter((data: any) => data.value !== 0);
+    
+    // Calculate total for percentage
+    const total = filteredData.reduce((sum: number, item: any) => sum + item.value, 0);
+    
+    // Add percentage to each item for the legend
+    const dataWithPercent = filteredData.map((item: any) => {
+        const percent = total > 0 ? Math.round((item.value / total) * 100) : 0;
+        return {
+            ...item,
+            percent,
+            // Find center name if available
+            centerName: data && centers.includes(item.name) ? 
+                findNameWithId(data, item.name, "center") : 
+                item.name
+        };
+    });
+    
+    // Custom tooltip to show percentage and value
+    const CustomTooltip = ({ active, payload }: any) => {
+        if (active && payload && payload.length) {
+            return (
+                <div style={{ 
+                    backgroundColor: '#fff', 
+                    padding: '5px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px'
+                }}>
+                    <p>{`${payload[0].name}: ${payload[0].value}`}</p>
+                    <p style={{ fontWeight: 'bold' }}>{`${payload[0].payload.percent}%`}</p>
+                </div>
+            );
+        }
+        return null;
+    };
 
-    return <ResponsiveContainer width={"100%"} height={200}>
-        <PieChart width={400} height={400}>
-            <Pie 
-              data={filteredData} 
-              dataKey="value" 
-              cx="50%" 
-              cy="50%" 
-              outerRadius={70}
-              paddingAngle={1}
-              labelLine={true}
-              label={renderCustomizedLabel}
-            >
-            {filteredData.map((value: any, index: number) => (
-                <Cell key={`cell-${index}`} fill={colors[centers.indexOf(value.name) % 8]} />
-            ))}
-            </Pie>
-        </PieChart>
-    </ResponsiveContainer>
+    return (
+        <div style={{ height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                    <Pie 
+                        data={dataWithPercent} 
+                        dataKey="value" 
+                        nameKey="centerName"
+                        cx="50%" 
+                        cy="50%" 
+                        outerRadius={60}
+                        innerRadius={0}
+                        paddingAngle={2}
+                        // Remove the label
+                        label={false}
+                        labelLine={false}
+                    >
+                        {dataWithPercent.map((entry: any, index: number) => (
+                            <Cell 
+                                key={`cell-${index}`} 
+                                fill={colors[centers.indexOf(entry.name) % 8]}
+                            />
+                        ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+            </ResponsiveContainer>
+            
+            {/* Custom legend with percentages */}
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                fontSize: '11px',
+                marginTop: '5px'
+            }}>
+                {dataWithPercent.map((entry: any, index: number) => (
+                    <div key={`legend-${index}`} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        margin: '0 4px 4px 0',
+                        backgroundColor: 'white',
+                        padding: '2px 4px',
+                        borderRadius: '4px'
+                    }}>
+                        <div style={{ 
+                            width: '8px', 
+                            height: '8px', 
+                            backgroundColor: colors[centers.indexOf(entry.name) % 8],
+                            marginRight: '4px'
+                        }} />
+                        <span style={{ fontWeight: 'bold' }}>{entry.percent}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 }

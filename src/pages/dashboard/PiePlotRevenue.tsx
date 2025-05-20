@@ -95,11 +95,11 @@ export function PiePlotRevenue({ data, dataFiltered, dataFilteredCumul, funcFilt
                 <div style={{ width: "100%", display: "flex"}}>
                     <div style={{ width: "50%" }}>
                         <span style={{ display: "flex", justifyContent: "center", fontWeight: "700" }}>Revenue</span>
-                        <CustomPieChart dataChart={dataFilteredCumul} centers={centers}/>
+                        <CustomPieChart dataChart={dataFilteredCumul} centers={centers} data={data}/>
                     </div>
                     <div style={{ width: "50%" }}>
                         <span style={{ display: "flex", justifyContent: "center", fontWeight: "700" }}>Result</span>
-                        <CustomPieChart dataChart={dataFiltered} centers={centers}/>
+                        <CustomPieChart dataChart={dataFiltered} centers={centers} data={data}/>
                     </div>
                 </div>
             </div>
