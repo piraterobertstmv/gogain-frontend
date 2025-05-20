@@ -190,16 +190,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         }
     }, [data]);
 
-    const exportToExcel = async () => {
-        try {
-            const response = await fetch(`${apiUrl}/transaction/export`, {
-                // ... existing code ...
-            });
-        } catch (error) {
-            console.error('Error exporting to Excel:', error);
-        }
-    };
-
     // Floating scroll buttons state
     const [showScrollUp, setShowScrollUp] = useState(false);
     const [showScrollDown, setShowScrollDown] = useState(false);
