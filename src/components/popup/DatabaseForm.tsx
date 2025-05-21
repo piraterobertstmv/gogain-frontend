@@ -183,8 +183,8 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
         const fetchData = async () => {
             try {
-                // Use localhost URL directly for development
-                const apiUrl = 'http://localhost:3001/';
+                // Use environment variable for API URL instead of hardcoded localhost
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
                 
                 const response = await fetch(`${apiUrl}${colNameDb}/${defaultValue._id}`, {
                     method: 'DELETE',
@@ -213,6 +213,18 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
         if (colNameDb == "users") {
             dataToSendApi["password"] = "password"
+            if (!("percentage" in dataToSendApi) || dataToSendApi.percentage === "") {
+                dataToSendApi["percentage"] = "0";
+            }
+            if (!("centers" in dataToSendApi) || !dataToSendApi.centers) {
+                dataToSendApi["centers"] = [];
+            }
+            if (!("services" in dataToSendApi) || !dataToSendApi.services) {
+                dataToSendApi["services"] = [];
+            }
+            if (!("isAdmin" in dataToSendApi)) {
+                dataToSendApi["isAdmin"] = false;
+            }
         }
 
         if (colNameDb == "client") {
@@ -240,8 +252,8 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return;
 
         try {
-            // Use localhost URL directly for development
-            const apiUrl = 'http://localhost:3001/';
+            // Use environment variable for API URL instead of hardcoded localhost
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
             
             const response = await fetch(`${apiUrl}${colNameDb}${isModifyOrNew}`, {
                 method: isModifyOrNew === "" ? "POST" : "PATCH",
@@ -255,6 +267,18 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: response.statusText }));
                 console.error('Server error:', errorData);
+                
+                // Handle validation errors
+                if (errorData.errors) {
+                    const newErrors: any = {};
+                    // Map backend validation errors to form fields
+                    Object.entries(errorData.errors).forEach(([field, message]: [string, any]) => {
+                        newErrors[field] = message;
+                    });
+                    setErr(newErrors);
+                    throw new Error(errorData.message || 'Validation failed');
+                }
+                
                 throw new Error(errorData.message || 'Network response was not ok');
             }
             closePopupFunc()

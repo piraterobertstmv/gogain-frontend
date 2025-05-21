@@ -135,8 +135,8 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         }
         
         try {
-            // Use localhost URL directly for development
-            const apiUrl = 'http://localhost:3001/';
+            // Use environment variable for API URL instead of hardcoded localhost
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
             
             const response = await fetch(`${apiUrl}transactions/batch`, {
                 method: "POST",
