@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 import { Application } from './pages/Application'
 import { Login } from './pages/Login'
-import { startKeepAlive, stopKeepAlive } from './services/KeepAliveService'
+import { startKeepAlive } from './services/KeepAliveService'
 import { LoadingSpinner } from './components/LoadingSpinner'
 
 function App() {
