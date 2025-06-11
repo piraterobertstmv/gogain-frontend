@@ -2,13 +2,24 @@ import { useState, useEffect } from 'react'
 
 import { Application } from './pages/Application'
 import { Login } from './pages/Login'
+import { startKeepAlive, stopKeepAlive } from './services/KeepAliveService'
+import { LoadingSpinner } from './components/LoadingSpinner'
 
 function App() {
     const [user, setUser] = useState<any>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Initialize keep-alive service
+        const stopKeepAliveService = startKeepAlive();
+        
+        // Get user data on app load
         getUser();
+        
+        // Clean up keep-alive service when component unmounts
+        return () => {
+            stopKeepAliveService();
+        };
     }, [])
 
     const getUser = async () => {
@@ -47,7 +58,9 @@ function App() {
     return (
         <>
             {loading ? (
-                <p>Loading...</p>
+                <div className="d-flex justify-content-center align-items-center vh-100">
+                    <LoadingSpinner message="Loading your dashboard..." />
+                </div>
             ) : Object.keys(user).length === 0 ? (
                 <Login setUser={setUser} />
             ) : (
@@ -56,6 +69,5 @@ function App() {
         </>
     )
 }
-
 
 export default App;
