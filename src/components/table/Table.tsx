@@ -66,23 +66,85 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     }
 
     function isRowFiltered(dataRow: any) {
-        if (filters.center.length > 0)
-            if (!filters.center.includes(dataRow.center))
-                return false
+        // Debug logging for transaction filtering
+        if (column === "transaction") {
+            console.log("Filtering transaction:", {
+                center: dataRow.center,
+                client: dataRow.client,
+                worker: dataRow.worker,
+                service: dataRow.service,
+                filters: filters
+            });
+        }
 
-        if (filters.client.length > 0)
-            if (!filters.client.includes(dataRow.client))
-                return false
+        // For transactions, the filter arrays contain IDs but transaction fields contain names
+        // We need to check if the transaction field values exist in the filter arrays
+        if (column === "transaction") {
+            // If any filter is active, check if the transaction has the required values
+            if (filters.center.length > 0 || filters.client.length > 0 || 
+                filters.worker.length > 0 || filters.service.length > 0) {
+                
+                // Check if transaction has all required fields
+                if (!dataRow.center || !dataRow.client || !dataRow.worker || !dataRow.service) {
+                    console.log("Transaction missing required fields, filtering out");
+                    return false;
+                }
+                
+                // Check center filter
+                if (filters.center.length > 0 && !filters.center.includes(dataRow.center)) {
+                    console.log("Filtered out by center filter:", dataRow.center);
+                    return false;
+                }
+                
+                // Check client filter
+                if (filters.client.length > 0 && !filters.client.includes(dataRow.client)) {
+                    console.log("Filtered out by client filter:", dataRow.client);
+                    return false;
+                }
+                
+                // Check worker filter
+                if (filters.worker.length > 0 && !filters.worker.includes(dataRow.worker)) {
+                    console.log("Filtered out by worker filter:", dataRow.worker);
+                    return false;
+                }
+                
+                // Check service filter
+                if (filters.service.length > 0 && !filters.service.includes(dataRow.service)) {
+                    console.log("Filtered out by service filter:", dataRow.service);
+                    return false;
+                }
+            }
+            
+            // If no filters are active, show all transactions
+            return true;
+        }
 
-        if (filters.worker.length > 0)
-            if (!filters.worker.includes(dataRow.worker))
-                return false
+        // For non-transaction tables, use the original logic
+        if (filters.center.length > 0) {
+            if (!dataRow.center || !filters.center.includes(dataRow.center)) {
+                return false;
+            }
+        }
 
-        if (filters.service.length > 0)
-            if (!filters.service.includes(dataRow.service))
-                return false
+        if (filters.client.length > 0) {
+            if (!dataRow.client || !filters.client.includes(dataRow.client)) {
+                return false;
+            }
+        }
 
-        return true
+        if (filters.worker.length > 0) {
+            if (!dataRow.worker || !filters.worker.includes(dataRow.worker)) {
+                return false;
+            }
+        }
+
+        if (filters.service.length > 0) {
+            if (!dataRow.service || !filters.service.includes(dataRow.service)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     React.useEffect(() => {
@@ -190,6 +252,13 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
             }
         });
     }
+
+    // Debug: count how many rows pass the filter
+    let visibleRows = 0;
+    rows.forEach((row: any) => {
+        if (isRowFiltered(row)) visibleRows++;
+    });
+    console.log(`Table: ${visibleRows} out of ${rows.length} rows will be visible for ${column}`);
 
     return (
         <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
