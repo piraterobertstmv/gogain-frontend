@@ -151,16 +151,24 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     });
     console.log(`Table: ${visibleRows} out of ${rows.length} rows will be visible for ${column}`);
 
+    // Debug: log the first few rows for transactions
+    if (column === "transaction" && rows.length > 0) {
+        console.log("First 3 rows to be rendered:", rows.slice(0, 3));
+        console.log("Total rows in state:", rows.length);
+    }
+
     return (
         <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
             <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
             <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
-                {rows.map((dataRow: any, index: number) => 
-                    // The original isRowFiltered function is removed, so we'll just check if the row is included in the filtered data
-                    // This might need adjustment based on the new filtering logic if it's different.
-                    // For now, we'll assume if the row is in the 'rows' state, it's visible.
-                    // If the filtering logic changed, this count might not be accurate.
-                    <TableRow 
+                {rows.map((dataRow: any, index: number) => {
+                    // Debug log for first few transactions
+                    if (column === "transaction" && index < 3) {
+                        console.log(`Rendering transaction row ${index}:`, dataRow);
+                    }
+                    
+                    return (
+                        <TableRow 
                             column={column} 
                             key={index} 
                             dataRow={dataRow} 
@@ -172,7 +180,8 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                             deleteFunction={deleteFunction} 
                             deleteLines={deleteLines}
                         />
-                )}
+                    );
+                })}
             </tbody>
         </table>
     )
