@@ -8,7 +8,14 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     const foundCenter: string[] = []
     const foundWorker: string[] = []
     const foundService: string[] = []
-    const [rows, setRows] = React.useState<any[]>([])
+    const [rows, setRows] = React.useState<any[]>(data[column] || [])
+
+    // Initialize rows when data changes
+    React.useEffect(() => {
+        if (data[column]) {
+            setRows(data[column]);
+        }
+    }, [data, column]);
 
     const deleteColumns: string[] = [
         "_id",
