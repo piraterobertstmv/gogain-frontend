@@ -8,6 +8,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     const foundCenter: string[] = []
     const foundWorker: string[] = []
     const foundService: string[] = []
+    const [rows, setRows] = React.useState<any[]>([])
 
     const deleteColumns: string[] = [
         "_id",
@@ -21,7 +22,8 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
         "originalWorkerName"
     ].concat(columnFilters)
     
-    const rows = data[column] ?? [];
+    // Remove the old rows variable since we're using state now
+    // const rows = data[column] ?? [];
 
     // Create comprehensive entity mappings for display
     const entityMappings = {
@@ -65,131 +67,73 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
         });
     }
 
-    function isRowFiltered(dataRow: any) {
-        // Debug logging for transaction filtering
-        if (column === "transaction") {
-            console.log("Filtering transaction:", {
-                center: dataRow.center,
-                client: dataRow.client,
-                worker: dataRow.worker,
-                service: dataRow.service,
-                filters: filters
-            });
-        }
-
-        // For transactions, the filter arrays contain IDs but transaction fields contain names
-        // We need to check if the transaction field values exist in the filter arrays
-        if (column === "transaction") {
-            // If any filter is active, check if the transaction has the required values
-            if (filters.center.length > 0 || filters.client.length > 0 || 
-                filters.worker.length > 0 || filters.service.length > 0) {
-                
-                // Check if transaction has all required fields
-                if (!dataRow.center || !dataRow.client || !dataRow.worker || !dataRow.service) {
-                    console.log("Transaction missing required fields, filtering out");
-                    return false;
-                }
-                
-                // Check center filter
-                if (filters.center.length > 0 && !filters.center.includes(dataRow.center)) {
-                    console.log("Filtered out by center filter:", dataRow.center);
-                    return false;
-                }
-                
-                // Check client filter
-                if (filters.client.length > 0 && !filters.client.includes(dataRow.client)) {
-                    console.log("Filtered out by client filter:", dataRow.client);
-                    return false;
-                }
-                
-                // Check worker filter
-                if (filters.worker.length > 0 && !filters.worker.includes(dataRow.worker)) {
-                    console.log("Filtered out by worker filter:", dataRow.worker);
-                    return false;
-                }
-                
-                // Check service filter
-                if (filters.service.length > 0 && !filters.service.includes(dataRow.service)) {
-                    console.log("Filtered out by service filter:", dataRow.service);
-                    return false;
-                }
-            }
-            
-            // If no filters are active, show all transactions
-            return true;
-        }
-
-        // For non-transaction tables, use the original logic
-        if (filters.center.length > 0) {
-            if (!dataRow.center || !filters.center.includes(dataRow.center)) {
-                return false;
-            }
-        }
-
-        if (filters.client.length > 0) {
-            if (!dataRow.client || !filters.client.includes(dataRow.client)) {
-                return false;
-            }
-        }
-
-        if (filters.worker.length > 0) {
-            if (!dataRow.worker || !filters.worker.includes(dataRow.worker)) {
-                return false;
-            }
-        }
-
-        if (filters.service.length > 0) {
-            if (!dataRow.service || !filters.service.includes(dataRow.service)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     React.useEffect(() => {
         if (data[column]) {
             let tmp: any = []
 
-            let valid: string[] = []
+            // For transactions, show all by default unless filters are specifically applied
             if (column == "transaction") {
-                valid = filters.center.concat(filters.client).concat(filters.worker).concat(filters.service)
-            }
-            
-            for (let i = 0; i < data[column].length; i++) {
-                let line = data[column][i]
-                if ((valid.length == 0 || column != "transaction") ||
-                    ((filters.center.length == 0 || filters.center.includes(line.center)) &&
+                // Only apply filters if they are actually selected
+                const hasActiveFilters = filters.center.length > 0 || filters.client.length > 0 || 
+                                       filters.worker.length > 0 || filters.service.length > 0;
+                
+                if (!hasActiveFilters) {
+                    // No filters active, show all transactions
+                    tmp = [...data[column]];
+                } else {
+                    // Apply filters only to transactions that have the required fields
+                    tmp = data[column].filter((line: any) => {
+                        const centerMatch = filters.center.length === 0 || 
+                                          (line.center && filters.center.includes(line.center));
+                        const clientMatch = filters.client.length === 0 || 
+                                         (line.client && filters.client.includes(line.client));
+                        const workerMatch = filters.worker.length === 0 || 
+                                         (line.worker && filters.worker.includes(line.worker));
+                        const serviceMatch = filters.service.length === 0 || 
+                                          (line.service && filters.service.includes(line.service));
+                        
+                        return centerMatch && clientMatch && workerMatch && serviceMatch;
+                    });
+                }
+                
+                // Populate filter options
+                data[column].forEach((line: any) => {
+                    if (line.client && !foundClient.includes(line.client)) {
+                        foundClient.push(line.client);
+                    }
+                    if (line.center && !foundCenter.includes(line.center)) {
+                        foundCenter.push(line.center);
+                    }
+                    if (line.worker && !foundWorker.includes(line.worker)) {
+                        foundWorker.push(line.worker);
+                    }
+                    if (line.service && !foundService.includes(line.service)) {
+                        foundService.push(line.service);
+                    }
+                });
+            } else {
+                // For non-transaction tables, use original logic
+                for (let i = 0; i < data[column].length; i++) {
+                    let line = data[column][i];
+                    if ((filters.center.length == 0 || filters.center.includes(line.center)) &&
                         (filters.client.length == 0 || filters.client.includes(line.client)) &&
                         (filters.worker.length == 0 || filters.worker.includes(line.worker)) &&
-                        (filters.service.length == 0 || filters.service.includes(line.service))))
-                    tmp.push(line)
-                
-                if (column == "transaction") {
-                    if (line.client != undefined && !foundClient.includes(line.client))
-                        foundClient.push(line.client)
-                    if (line.center != undefined && !foundCenter.includes(line.center))
-                        foundCenter.push(line.center)
-                    if (line.worker != undefined && !foundWorker.includes(line.worker))
-                        foundWorker.push(line.worker)
-                    if (line.service != undefined && !foundService.includes(line.service))
-                        foundService.push(line.service)
+                        (filters.service.length == 0 || filters.service.includes(line.service))) {
+                        tmp.push(line);
+                    }
                 }
             }
 
-            // Check if additional column-specific filters are active
+            // Apply column-specific filters if any
             if (column === "transaction" && columnFilters && columnFilters.length > 0) {
                 tmp = tmp.filter((transaction: any) => {
-                    // Apply each column filter
                     for (const filter of columnFilters) {
                         const { column, value, operator } = filter;
                         
-                        // Skip if the column doesn't exist on the transaction
                         if (!(column in transaction)) continue;
                         
                         const transactionValue = transaction[column];
                         
-                        // Apply the appropriate comparison based on operator
                         switch (operator) {
                             case 'equals':
                                 if (transactionValue !== value) return false;
@@ -209,20 +153,16 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                             case 'endsWith':
                                 if (!String(transactionValue).endsWith(value)) return false;
                                 break;
-                            // Add more operators as needed
                             default:
                                 break;
                         }
                     }
-                    
-                    // If we reach here, all filters have passed
                     return true;
                 });
             }
             
-            // Skip updating the filteredData since it's not used
-            // This variable was removed to fix TypeScript build errors (TS6133)
-            // setFilteredData(tmp)
+            // Update the rows state to display the filtered data
+            setRows(tmp);
         }
     }, [data, column, filters, columnFilters])
 
@@ -256,7 +196,11 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     // Debug: count how many rows pass the filter
     let visibleRows = 0;
     rows.forEach((row: any) => {
-        if (isRowFiltered(row)) visibleRows++;
+        // The original isRowFiltered function is removed, so we'll just check if the row is included in the filtered data
+        // This might need adjustment based on the new filtering logic if it's different.
+        // For now, we'll assume if the row is in the 'rows' state, it's visible.
+        // If the filtering logic changed, this count might not be accurate.
+        visibleRows++;
     });
     console.log(`Table: ${visibleRows} out of ${rows.length} rows will be visible for ${column}`);
 
@@ -265,8 +209,11 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
             <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
             <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
                 {rows.map((dataRow: any, index: number) => 
-                    isRowFiltered(dataRow) ? (
-                        <TableRow 
+                    // The original isRowFiltered function is removed, so we'll just check if the row is included in the filtered data
+                    // This might need adjustment based on the new filtering logic if it's different.
+                    // For now, we'll assume if the row is in the 'rows' state, it's visible.
+                    // If the filtering logic changed, this count might not be accurate.
+                    <TableRow 
                             column={column} 
                             key={index} 
                             dataRow={dataRow} 
@@ -278,7 +225,6 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                             deleteFunction={deleteFunction} 
                             deleteLines={deleteLines}
                         />
-                    ) : null
                 )}
             </tbody>
         </table>
