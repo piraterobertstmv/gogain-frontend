@@ -195,7 +195,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
 
     // Debug: count how many rows pass the filter
     let visibleRows = 0;
-    rows.forEach((row: any) => {
+    rows.forEach(() => {
         // The original isRowFiltered function is removed, so we'll just check if the row is included in the filtered data
         // This might need adjustment based on the new filtering logic if it's different.
         // For now, we'll assume if the row is in the 'rows' state, it's visible.
