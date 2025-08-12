@@ -334,10 +334,10 @@ export function Setup({ data, reloadData, user } : { data: any, reloadData: any,
                                 </thead>
                                 <tbody>
                                     {data.users?.map((userItem: any) => (
-                                        <tr key={userItem._id} className={userItem._id === user._id ? 'table-primary' : ''}>
+                                        <tr key={userItem._id} className={userItem.email === user.email ? 'table-primary' : ''}>
                                             <td>
                                                 {userItem.email}
-                                                {userItem._id === user._id && (
+                                                {userItem.email === user.email && (
                                                     <span className="badge bg-info ms-2">Current User</span>
                                                 )}
                                             </td>
@@ -358,7 +358,7 @@ export function Setup({ data, reloadData, user } : { data: any, reloadData: any,
                                                     variant="outline-primary" 
                                                     size="sm"
                                                     onClick={() => setSelectedUser(userItem)}
-                                                    disabled={userItem._id === user._id && user.role !== 'super_admin'}
+                                                    disabled={userItem.email === user.email && user.role !== 'super_admin'}
                                                 >
                                                     Edit Permissions
                                                 </Button>
