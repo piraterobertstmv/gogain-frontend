@@ -76,32 +76,10 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
 
     React.useEffect(() => {
         if (data[column]) {
-            let tmp: any = []
-
-            // For transactions, show all by default unless filters are specifically applied
-            if (column == "transaction") {
-                // Only apply filters if they are actually selected
-                const hasActiveFilters = filters.center.length > 0 || filters.client.length > 0 || 
-                                       filters.worker.length > 0 || filters.service.length > 0;
-                
-                if (!hasActiveFilters) {
-                    // No filters active, show all transactions
-                    tmp = [...data[column]];
-                } else {
-                    // Apply filters only to transactions that have the required fields
-                    tmp = data[column].filter((line: any) => {
-                        const centerMatch = filters.center.length === 0 || 
-                                          (line.center && filters.center.includes(line.center));
-                        const clientMatch = filters.client.length === 0 || 
-                                         (line.client && filters.client.includes(line.client));
-                        const workerMatch = filters.worker.length === 0 || 
-                                         (line.worker && filters.worker.includes(line.worker));
-                        const serviceMatch = filters.service.length === 0 || 
-                                          (line.service && filters.service.includes(line.service));
-                        
-                        return centerMatch && clientMatch && workerMatch && serviceMatch;
-                    });
-                }
+            // For transactions, show all by default
+            if (column === "transaction") {
+                // Just show all transactions initially
+                setRows(data[column]);
                 
                 // Populate filter options
                 data[column].forEach((line: any) => {
@@ -119,7 +97,8 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                     }
                 });
             } else {
-                // For non-transaction tables, use original logic
+                // For non-transaction tables, use simple filtering
+                let tmp: any[] = [];
                 for (let i = 0; i < data[column].length; i++) {
                     let line = data[column][i];
                     if ((filters.center.length == 0 || filters.center.includes(line.center)) &&
@@ -129,49 +108,10 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                         tmp.push(line);
                     }
                 }
+                setRows(tmp);
             }
-
-            // Apply column-specific filters if any
-            if (column === "transaction" && columnFilters && columnFilters.length > 0) {
-                tmp = tmp.filter((transaction: any) => {
-                    for (const filter of columnFilters) {
-                        const { column, value, operator } = filter;
-                        
-                        if (!(column in transaction)) continue;
-                        
-                        const transactionValue = transaction[column];
-                        
-                        switch (operator) {
-                            case 'equals':
-                                if (transactionValue !== value) return false;
-                                break;
-                            case 'notEquals':
-                                if (transactionValue === value) return false;
-                                break;
-                            case 'contains':
-                                if (!String(transactionValue).includes(value)) return false;
-                                break;
-                            case 'notContains':
-                                if (String(transactionValue).includes(value)) return false;
-                                break;
-                            case 'startsWith':
-                                if (!String(transactionValue).startsWith(value)) return false;
-                                break;
-                            case 'endsWith':
-                                if (!String(transactionValue).endsWith(value)) return false;
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    return true;
-                });
-            }
-            
-            // Update the rows state to display the filtered data
-            setRows(tmp);
         }
-    }, [data, column, filters, columnFilters])
+    }, [data, column, filters])
 
     // Add debug effect
     React.useEffect(() => {
