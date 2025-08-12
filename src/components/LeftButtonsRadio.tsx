@@ -1,6 +1,6 @@
 import './LeftButtonsRadio.css'
 
-export function LeftButtonsRadio({ isUserAdmin, buttonsName, idButtonsName, setIdButtonsLeft, setUser }: { isUserAdmin:any, buttonsName: any, idButtonsName: number, setIdButtonsLeft: any, setUser: any }) {
+export function LeftButtonsRadio({ buttonsName, idButtonsName, setIdButtonsLeft, setUser }: { buttonsName: any, idButtonsName: number, setIdButtonsLeft: any, setUser: any }) {
     const handleLogout = () => {
         localStorage.removeItem('authToken');
         setUser({})

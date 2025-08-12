@@ -105,7 +105,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
         </div>
         <div className='d-flex flex-row' style={{ backgroundColor: "#FBFBFB", fontFamily: 'Inter, sans-serif' }}>
             <div style={{ width: "max-content" }}>
-                <LeftButtonsRadio isUserAdmin={user.isAdmin} buttonsName={["Dashboard", "Set up", "Transactions", "Reports", "Settings"]} idButtonsName={idButtonsLeft} setIdButtonsLeft={setIdButtonsLeft} setUser={setUser}/>
+                <LeftButtonsRadio buttonsName={["Dashboard", "Set up", "Transactions", "Reports", "Settings"]} idButtonsName={idButtonsLeft} setIdButtonsLeft={setIdButtonsLeft} setUser={setUser}/>
             </div>
             <div>
                 {(idButtonsLeft == 0) && (
