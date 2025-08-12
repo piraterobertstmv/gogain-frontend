@@ -63,7 +63,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 // If we have the auth token, try to load transactions directly
                 const token = localStorage.getItem('authToken');
                 if (token) {
-                    const transResponse = await fetch(`${apiUrl}transactions`, {
+                    const transResponse = await fetch(`${apiUrl}transaction`, {
                         method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${token}`,
