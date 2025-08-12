@@ -108,7 +108,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                 <LeftButtonsRadio isUserAdmin={user.isAdmin} buttonsName={["Dashboard", "Set up", "Transactions", "Reports", "Settings"]} idButtonsName={idButtonsLeft} setIdButtonsLeft={setIdButtonsLeft} setUser={setUser}/>
             </div>
             <div>
-                {(idButtonsLeft == 0 && user.isAdmin) && (
+                {(idButtonsLeft == 0) && (
                     <Dashboard data={data} />
                 )}
                 {(idButtonsLeft == 1) && (
@@ -117,7 +117,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                 {idButtonsLeft == 2 && (
                     <Transactions data={data} reloadData={handleReload} user={user} />
                 )}
-                {(idButtonsLeft == 3 && user.isAdmin) && (
+                {(idButtonsLeft == 3) && (
                     <Reports data={data}/>
                 )}
                 {(idButtonsLeft == 4) && (

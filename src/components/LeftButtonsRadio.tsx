@@ -15,7 +15,6 @@ export function LeftButtonsRadio({ isUserAdmin, buttonsName, idButtonsName, setI
     >
         <div>
         {buttonsName.map((buttonName: String, index: number) => (
-            (index == 1 || index == 2 || index == 4 || isUserAdmin) && (
             <div key={index.toString()} onClick={() => setIdButtonsLeft(index)} className="p-2">
                 <input 
                     type="radio"
@@ -53,7 +52,6 @@ export function LeftButtonsRadio({ isUserAdmin, buttonsName, idButtonsName, setI
                     <span className="ms-2">{buttonName}</span>
                 </label>
             </div>
-            )
         ))}
         </div>
         <div>
