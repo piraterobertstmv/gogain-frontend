@@ -17,11 +17,6 @@ export function Setup({ data, reloadData, user } : { data: any, reloadData: any,
         setShow(false)
     }
 
-    const handleShowPermissions = (userData: any) => {
-        setSelectedUser(userData);
-        setShowPermissions(true);
-    }
-
     const handleClosePermissions = () => {
         setShowPermissions(false);
         setSelectedUser(null);
