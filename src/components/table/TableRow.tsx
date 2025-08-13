@@ -227,21 +227,6 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             console.log("Transaction object structure:", dataRow);
             console.log("Object keys:", Object.keys(dataRow));
         }
-        
-        const orderedColumns = [
-            "date", 
-            "center", 
-            "client", 
-            "cost", // amount with taxes
-            // amount without taxes is added dynamically after cost
-            "worker", 
-            "taxes", 
-            "typeOfTransaction", 
-            "typeOfMovement", 
-            "frequency", 
-            "typeOfClient", 
-            "service"
-        ];
 
         return (
             <>
