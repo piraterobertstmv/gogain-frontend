@@ -201,7 +201,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
         // Ensure we always return a string or number, never an object
         if (typeof value === 'object' && value !== null) {
-            return JSON.stringify(value);
+            // For arrays, join them with commas
+            if (Array.isArray(value)) {
+                return value.join(", ");
+            }
+            // For other objects, return empty string to avoid showing complex data
+            return "";
         }
 
         return value || ""
@@ -259,7 +264,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                                         {(() => {
                                             const cellValue = findCorrectValue(key, value);
                                             if (typeof cellValue === 'object' && cellValue !== null) {
-                                                return JSON.stringify(cellValue);
+                                                // For arrays, join them
+                                                if (Array.isArray(cellValue)) {
+                                                    return cellValue.join(", ");
+                                                }
+                                                // For other objects, return empty string
+                                                return "";
                                             }
                                             return cellValue || "";
                                         })()}
@@ -301,7 +311,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                                 {(() => {
                                     const cellValue = findCorrectValue(key, value);
                                     if (typeof cellValue === 'object' && cellValue !== null) {
-                                        return JSON.stringify(cellValue);
+                                        // For arrays, join them
+                                        if (Array.isArray(cellValue)) {
+                                            return cellValue.join(", ");
+                                        }
+                                        // For other objects, return empty string
+                                        return "";
                                     }
                                     return cellValue || "";
                                 })()}

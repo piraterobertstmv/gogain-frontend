@@ -26,7 +26,11 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
         "originalClientName",
         "originalCenterName",
         "originalServiceName", 
-        "originalWorkerName"
+        "originalWorkerName",
+        "permissions",
+        "role",
+        "assignedCenters",
+        "assignedServices"
     ].concat(columnFilters)
     
     // Remove the old rows variable since we're using state now
