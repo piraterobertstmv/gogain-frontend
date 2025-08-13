@@ -97,76 +97,23 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                     }
                 });
             } else {
-                // For non-transaction tables, use simple filtering
-                let tmp: any[] = [];
-                for (let i = 0; i < data[column].length; i++) {
-                    let line = data[column][i];
-                    if ((filters.center.length == 0 || filters.center.includes(line.center)) &&
-                        (filters.client.length == 0 || filters.client.includes(line.client)) &&
-                        (filters.worker.length == 0 || filters.worker.includes(line.worker)) &&
-                        (filters.service.length == 0 || filters.service.includes(line.service))) {
-                        tmp.push(line);
-                    }
-                }
-                setRows(tmp);
+                // For non-transaction tables, just show all data without complex filtering
+                setRows(data[column]);
             }
         }
     }, [data, column, filters])
 
-    // Add debug effect
-    React.useEffect(() => {
-        if (column === "transaction" && data[column]?.length > 0) {
-            console.log(
-                "Table component - transaction object keys:", 
-                Object.keys(data[column][0]),
-                "deleteColumns:", 
-                deleteColumns
-            );
-        }
-    }, [column, data, deleteColumns]);
-
-    // Add debug output for first transaction
-    if (column === "transaction" && data[column]?.length > 0) {
-        console.log("First transaction:", data[column][0]);
-    }
-    
-    // Find any additional index-like fields that need to be excluded
-    if (column === "transaction" && data[column]?.length > 0) {
-        const firstTransaction = data[column][0];
-        Object.keys(firstTransaction).forEach(key => {
-            if (key.toLowerCase().includes('index') && !deleteColumns.includes(key)) {
-                deleteColumns.push(key);
-            }
-        });
-    }
-
     // Debug: count how many rows pass the filter
     let visibleRows = 0;
     rows.forEach(() => {
-        // The original isRowFiltered function is removed, so we'll just check if the row is included in the filtered data
-        // This might need adjustment based on the new filtering logic if it's different.
-        // For now, we'll assume if the row is in the 'rows' state, it's visible.
-        // If the filtering logic changed, this count might not be accurate.
         visibleRows++;
     });
-    console.log(`Table: ${visibleRows} out of ${rows.length} rows will be visible for ${column}`);
-
-    // Debug: log the first few rows for transactions
-    if (column === "transaction" && rows.length > 0) {
-        console.log("First 3 rows to be rendered:", rows.slice(0, 3));
-        console.log("Total rows in state:", rows.length);
-    }
 
     return (
         <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
             <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
             <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
                 {rows.map((dataRow: any, index: number) => {
-                    // Debug log for first few transactions
-                    if (column === "transaction" && index < 3) {
-                        console.log(`Rendering transaction row ${index}:`, dataRow);
-                    }
-                    
                     return (
                         <TableRow 
                             column={column} 
