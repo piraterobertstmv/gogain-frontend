@@ -271,25 +271,23 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         </td>
                     )}
                     
-                    {orderedColumns.map((key, index) => {
-                        // Skip the index field itself since we handle it separately
-                        if (key === 'index') return null;
-                        
-                        const value = dataRow[key];
-                        
-                        return (
-                            <React.Fragment key={`cell-${index}`}>
-                                <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                    {findCorrectValue(key, value)}
-                                </td>
-
-                                {key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
-                                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                        {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
+                    {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
+                        if (!deleteColumns.includes(key) && index !== 0) {
+                            return (
+                                <React.Fragment key={`header-${index}`}>
+                                    <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                        {findCorrectValue(key, value)}
                                     </td>
-                                )}
-                            </React.Fragment>
-                        );
+
+                                    {column === "transaction" && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} key={`amount-with-taxes-${index}`}>
+                                            {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
+                                        </td>
+                                    )}
+                                </React.Fragment>
+                            )
+                        }
+                        return null
                     })}
                 </tr>
 
