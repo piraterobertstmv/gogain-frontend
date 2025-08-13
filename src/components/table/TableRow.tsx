@@ -245,55 +245,53 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
         return (
             <>
-                {(user.isAdmin || user._id == dataRow.worker) && (
-                    <tr onClick={handleShow} ref={rowRef}>
+                <tr onClick={handleShow} ref={rowRef}>
+                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                        <input
+                            type="checkbox"
+                            checked={deleteLines.includes(dataRow._id)}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                console.log('Checkbox toggled for transaction:', dataRow._id);
+                                deleteFunction(dataRow._id);
+                            }}
+                            style={{ cursor: "pointer", width: "1vw" }}
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`Select transaction ${indexIn}`}
+                        />
+                    </td>
+                    
+                    {/* Index cell - this is the row number */}
+                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
+                    
+                    {/* We need to include the problematic index cell so our DOM manipulation works */}
+                    {dataRow.index && (
                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            <input
-                                type="checkbox"
-                                checked={deleteLines.includes(dataRow._id)}
-                                onChange={(e) => {
-                                    e.stopPropagation();
-                                    console.log('Checkbox toggled for transaction:', dataRow._id);
-                                    deleteFunction(dataRow._id);
-                                }}
-                                style={{ cursor: "pointer", width: "1vw" }}
-                                onClick={(e) => e.stopPropagation()}
-                                aria-label={`Select transaction ${indexIn}`}
-                            />
+                            {dataRow.index}
                         </td>
+                    )}
+                    
+                    {orderedColumns.map((key, index) => {
+                        // Skip the index field itself since we handle it separately
+                        if (key === 'index') return null;
                         
-                        {/* Index cell - this is the row number */}
-                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
+                        const value = dataRow[key];
                         
-                        {/* We need to include the problematic index cell so our DOM manipulation works */}
-                        {dataRow.index && (
-                            <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                {dataRow.index}
-                            </td>
-                        )}
-                        
-                        {orderedColumns.map((key, index) => {
-                            // Skip the index field itself since we handle it separately
-                            if (key === 'index') return null;
-                            
-                            const value = dataRow[key];
-                            
-                            return (
-                                <React.Fragment key={`cell-${index}`}>
-                                    <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                        {findCorrectValue(key, value)}
-                                    </td>
+                        return (
+                            <React.Fragment key={`cell-${index}`}>
+                                <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                    {findCorrectValue(key, value)}
+                                </td>
 
-                                    {key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
-                                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                            {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
-                                        </td>
-                                    )}
-                                </React.Fragment>
-                            );
-                        })}
-                    </tr>
-                )}
+                                {key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                        {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
+                                    </td>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </tr>
 
                 <Modal show={show} onHide={handleClose}>
                     <Modal.Header closeButton>
