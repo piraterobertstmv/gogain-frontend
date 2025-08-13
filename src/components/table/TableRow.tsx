@@ -311,18 +311,26 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                     key !== 'role' && 
                     key !== 'assignedCenters' && 
                     key !== 'assignedServices' &&
-                    typeof value !== 'object') {
+                    key !== 'dashboard' &&
+                    key !== 'transactions' &&
+                    key !== 'clients' &&
+                    key !== 'centers' &&
+                    key !== 'services' &&
+                    key !== 'users' &&
+                    key !== 'reports' &&
+                    key !== 'settings' &&
+                    typeof value !== 'object' &&
+                    !key.includes('view') &&
+                    !key.includes('edit') &&
+                    !key.includes('create') &&
+                    !key.includes('delete')) {
                     return (
                         <React.Fragment key={`header-${index}`}>
                             <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                                 {(() => {
                                     const cellValue = findCorrectValue(key, value);
-                                    if (typeof cellValue === 'object' && cellValue !== null) {
-                                        // For arrays, join them
-                                        if (Array.isArray(cellValue)) {
-                                            return cellValue.join(", ");
-                                        }
-                                        // For other objects, return empty string
+                                    // Triple check - never render objects
+                                    if (typeof cellValue === 'object' || typeof value === 'object') {
                                         return "";
                                     }
                                     return cellValue || "";
