@@ -202,7 +202,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             return value + '€'
         }
 
-        return value
+        // Ensure we always return a string or number, never an object
+        if (typeof value === 'object' && value !== null) {
+            return JSON.stringify(value);
+        }
+
+        return value || ""
     }
 
     function findCorrectDefaultValue() {
@@ -261,7 +266,13 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                             return (
                                 <React.Fragment key={`header-${index}`}>
                                     <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                        {findCorrectValue(key, value)}
+                                        {(() => {
+                                            const cellValue = findCorrectValue(key, value);
+                                            if (typeof cellValue === 'object' && cellValue !== null) {
+                                                return JSON.stringify(cellValue);
+                                            }
+                                            return cellValue || "";
+                                        })()}
                                     </td>
 
                                     {column === "transaction" && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
@@ -297,7 +308,13 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                     return (
                         <React.Fragment key={`header-${index}`}>
                             <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                {findCorrectValue(key, value)}
+                                {(() => {
+                                    const cellValue = findCorrectValue(key, value);
+                                    if (typeof cellValue === 'object' && cellValue !== null) {
+                                        return JSON.stringify(cellValue);
+                                    }
+                                    return cellValue || "";
+                                })()}
                             </td>
                         </React.Fragment>
                     )
