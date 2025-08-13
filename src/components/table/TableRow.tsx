@@ -30,9 +30,6 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                 if (valueAtIndex2 === '1') {
                     cells[2].style.display = 'none';
                 }
-                
-                // Log what we found
-                console.log(`Row ${indexIn}: Found value '${valueAtIndex2}' at 3rd cell`);
             }
         }
     }, [indexIn, column]);
@@ -227,12 +224,6 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
     // For transaction tables, use the defined column order
     if (column === "transaction") {
-        // Debug: log the first transaction to understand its structure
-        if (indexIn === 1) {
-            console.log("Transaction object structure:", dataRow);
-            console.log("Object keys:", Object.keys(dataRow));
-        }
-
         return (
             <>
                 <tr onClick={handleShow} ref={rowRef}>
@@ -242,7 +233,6 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                             checked={deleteLines.includes(dataRow._id)}
                             onChange={(e) => {
                                 e.stopPropagation();
-                                console.log('Checkbox toggled for transaction:', dataRow._id);
                                 deleteFunction(dataRow._id);
                             }}
                             style={{ cursor: "pointer", width: "1vw" }}
