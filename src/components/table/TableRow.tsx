@@ -308,25 +308,24 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
     // For non-transaction tables, use the original logic
     return (
     <>
-        {(column != "transaction" || (user.isAdmin || user._id == dataRow.worker)) && (
-            <tr onClick={handleShow} ref={rowRef}>
-                {column == "transaction" && (
-                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                        <input
-                            type="checkbox"
-                            checked={deleteLines.includes(dataRow._id)}
-                            onChange={(e) => {
-                                e.stopPropagation();
-                                console.log('Checkbox toggled for transaction:', dataRow._id);
-                                deleteFunction(dataRow._id);
-                            }}
-                            style={{ cursor: "pointer", width: "1vw" }}
-                            onClick={(e) => e.stopPropagation()}
-                            aria-label={`Select transaction ${indexIn}`}
-                        />
-                    </td>
-                )}
-                <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
+        <tr onClick={handleShow} ref={rowRef}>
+            {column == "transaction" && (
+                <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                    <input
+                        type="checkbox"
+                        checked={deleteLines.includes(dataRow._id)}
+                        onChange={(e) => {
+                            e.stopPropagation();
+                            console.log('Checkbox toggled for transaction:', dataRow._id);
+                            deleteFunction(dataRow._id);
+                        }}
+                        style={{ cursor: "pointer", width: "1vw" }}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select transaction ${indexIn}`}
+                    />
+                </td>
+            )}
+            <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                 
                 {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
                     if (!deleteColumns.includes(key) && index !== 0) {
@@ -347,7 +346,6 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                     return null
                 })}
             </tr>
-        )}
 
         <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
