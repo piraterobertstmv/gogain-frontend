@@ -304,6 +304,11 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                 
             {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
+                // Debug logging for the problematic user
+                if (dataRow.email === 'a.moya.valls@icloud.com') {
+                    console.log(`Processing field: ${key}, value type: ${typeof value}, value:`, value);
+                }
+                
                 // Explicitly filter out permission-related fields and other unwanted fields
                 if (!deleteColumns.includes(key) && 
                     index !== 0 && 
