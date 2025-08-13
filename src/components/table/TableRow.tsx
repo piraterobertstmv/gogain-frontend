@@ -304,7 +304,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                 
             {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                // Only render simple string/number values, NEVER objects
+                // Only render simple values, but use findCorrectValue for proper formatting
                 if (!deleteColumns.includes(key) && 
                     index !== 0 && 
                     typeof value !== 'object' &&
@@ -313,7 +313,19 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                     return (
                         <React.Fragment key={`header-${index}`}>
                             <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                {value}
+                                {(() => {
+                                    const cellValue = findCorrectValue(key, value);
+                                    // Make sure we never render objects
+                                    if (typeof cellValue === 'object' && cellValue !== null) {
+                                        // For arrays, join them
+                                        if (Array.isArray(cellValue)) {
+                                            return cellValue.join(", ");
+                                        }
+                                        // For other objects, return empty string
+                                        return "";
+                                    }
+                                    return cellValue || "";
+                                })()}
                             </td>
                         </React.Fragment>
                     )
