@@ -325,7 +325,9 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                         return (
                             <td key={`user-${index}`} scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                                 {(() => {
+                                    console.log(`Processing users table - key: ${key}, value:`, value);
                                     const cellValue = findCorrectValue(key, value);
+                                    console.log(`Processed value for ${key}:`, cellValue);
                                     if (typeof cellValue === 'object' && cellValue !== null) {
                                         // For arrays, join them
                                         if (Array.isArray(cellValue)) {
