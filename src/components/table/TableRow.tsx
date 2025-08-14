@@ -297,6 +297,60 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
         );
     }
 
+    // For users tables, use the specific column order to match the design
+    if (column === "users") {
+        const orderedColumns = [
+            "email",
+            "isAdmin", 
+            "centers",
+            "services",
+            "lastName",
+            "firstName",
+            "percentage"
+        ];
+
+        return (
+            <>
+                <tr onClick={handleShow} ref={rowRef}>
+                    {/* Index cell - this is the row number */}
+                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
+                    
+                    {orderedColumns.map((key, index) => {
+                        // Skip any explicitly excluded columns
+                        if (deleteColumns.includes(key)) {
+                            return null;
+                        }
+
+                        const value = dataRow[key];
+                        return (
+                            <td key={`user-${index}`} scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+                                {(() => {
+                                    const cellValue = findCorrectValue(key, value);
+                                    if (typeof cellValue === 'object' && cellValue !== null) {
+                                        // For arrays, join them
+                                        if (Array.isArray(cellValue)) {
+                                            return cellValue.join(", ");
+                                        }
+                                        // For other objects, return empty string
+                                        return "";
+                                    }
+                                    return cellValue || "";
+                                })()}
+                            </td>
+                        );
+                    })}
+                </tr>
+
+                <Modal show={show} onHide={handleClose}>
+                    <Modal.Header closeButton>
+                        <Modal.Title>Add {column}</Modal.Title>
+                    </Modal.Header>
+                    <DatabaseForm columnName={column} data={data} defaultValue={findCorrectDefaultValue()} closePopupFunc={handleClose} user={user}/>
+                </Modal>
+            </>
+        );
+    }
+
     // For non-transaction tables, use the original logic
     return (
     <>

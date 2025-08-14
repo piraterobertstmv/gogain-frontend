@@ -86,6 +86,47 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
         );
     }
 
+    if (column === "users") {
+        // Custom column order for users table to match the design
+        const orderedColumns = [
+            "email",
+            "isAdmin", 
+            "centers",
+            "services",
+            "lastName",
+            "firstName",
+            "percentage"
+        ];
+
+        return (
+            <thead>
+                <tr ref={headerRowRef}>
+                    <th style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>Index</th>
+                    
+                    {orderedColumns.map((colKey, index) => {
+                        // Skip any explicitly excluded columns
+                        if (deleteColumns.includes(colKey)) {
+                            return null;
+                        }
+
+                        return (
+                            <th scope="col" key={`header-${index}`} style={{ verticalAlign: "middle", textAlign: "center", borderStyle: "solid", borderWidth: "0.5px" }}>
+                                {colKey === "isAdmin" ? "Is admin" : 
+                                 colKey === "centers" ? "Centers" :
+                                 colKey === "services" ? "Services" :
+                                 colKey === "lastName" ? "Last name" :
+                                 colKey === "firstName" ? "First name" :
+                                 colKey === "percentage" ? "Percentage" :
+                                 colKey === "email" ? "Email" :
+                                 formatString(colKey)}
+                            </th>
+                        );
+                    })}
+                </tr>
+            </thead>
+        );
+    }
+
     // For non-transaction tables, use the original logic but add ref for cleanup
     return (
         <thead>
