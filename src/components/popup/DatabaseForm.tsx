@@ -214,7 +214,10 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
         if (colNameDb == "users") {
             dataToSendApi["password"] = "password"
             if (!("percentage" in dataToSendApi) || dataToSendApi.percentage === "") {
-                dataToSendApi["percentage"] = "0";
+                dataToSendApi["percentage"] = 0;
+            } else {
+                // Convert percentage string to number
+                dataToSendApi["percentage"] = parseFloat(dataToSendApi.percentage) || 0;
             }
             if (!("centers" in dataToSendApi) || !dataToSendApi.centers) {
                 dataToSendApi["centers"] = [];
@@ -224,6 +227,9 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             }
             if (!("isAdmin" in dataToSendApi)) {
                 dataToSendApi["isAdmin"] = false;
+            } else {
+                // Convert display string to boolean
+                dataToSendApi["isAdmin"] = dataToSendApi["isAdmin"] === "ADMINISTRATOR";
             }
         }
 
@@ -359,7 +365,7 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                                 <InputList name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} listOfValues={["ordinary", "extraordinary"]} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "listAdmin" && (
-                                <InputList name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} listOfValues={["ADMINISTRATOR", "REGULAR USER"]} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""}/>
+                                <InputList name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} listOfValues={["ADMINISTRATOR", "REGULAR USER"]} defaultValue={defaultValue === null ? "" : (defaultValue[key] === true ? "ADMINISTRATOR" : "REGULAR USER")} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "isSupplier" && (
                                 <InputIsSupplier name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""}/>
