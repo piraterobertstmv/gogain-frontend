@@ -304,22 +304,12 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                 
             {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                // Allow arrays (centers, services) but block specific permission objects
-                if (!deleteColumns.includes(key) && 
-                    index !== 0 && 
-                    key !== 'permissions' &&
-                    key !== 'role' &&
-                    key !== 'assignedCenters' &&
-                    key !== 'assignedServices' &&
-                    // Block the specific permission object structure
-                    !(typeof value === 'object' && value !== null && !Array.isArray(value) && 
-                      ('dashboard' in value || 'transactions' in value || 'clients' in value))) {
+                if (!deleteColumns.includes(key) && index !== 0) {
                     return (
                         <React.Fragment key={`header-${index}`}>
                             <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
                                 {(() => {
                                     const cellValue = findCorrectValue(key, value);
-                                    // Make sure we never render objects except arrays
                                     if (typeof cellValue === 'object' && cellValue !== null) {
                                         // For arrays, join them
                                         if (Array.isArray(cellValue)) {
