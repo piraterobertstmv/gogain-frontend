@@ -87,10 +87,6 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
         let updatedData = { ...dataToSendApi };
         updatedData[fieldName] = value
 
-        if (fieldName == "isAdmin") {
-            updatedData[fieldName] = value === "ADMINISTRATOR"
-        }
-
         setDataToSendApi(updatedData)
     }
 
