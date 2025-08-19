@@ -1,3 +1,4 @@
+// CHECKPOINT: Working version before permissions implementation - [Current Date]
 import { useState, useEffect } from 'react'
 
 import { Application } from './pages/Application'
@@ -23,6 +24,9 @@ function App() {
     }, [])
 
     const getUser = async () => {
+        // CHECKPOINT: Safe working version
+        console.log('App initializing...');
+        
         // Return if no token
         const token = localStorage.getItem('authToken')
         if (!token) {
