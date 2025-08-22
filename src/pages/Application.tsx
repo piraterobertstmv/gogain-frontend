@@ -81,8 +81,25 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     return dateA.getTime() - dateB.getTime();
                 }) : [];
                 
+                // Filter data based on user permissions
+                const isUserAdmin = user?.isAdmin === true;
+                const userCenterIds = user?.centers || [];
+                
+                // Filter transactions for regular users (only show transactions from assigned centers)
+                const filteredTransactions = isUserAdmin ? sortedTransactions : 
+                    sortedTransactions.filter(transaction => 
+                        userCenterIds.includes(transaction.center)
+                    );
+                
+                console.log('User permissions:', { 
+                    isAdmin: isUserAdmin, 
+                    assignedCenters: userCenterIds,
+                    totalTransactions: sortedTransactions.length,
+                    filteredTransactions: filteredTransactions.length 
+                });
+
                 setData({
-                    transaction: sortedTransactions,
+                    transaction: filteredTransactions,
                     client: sortedClients,
                     users: results[2].users || [],
                     center: results[3].center || [],
@@ -99,29 +116,104 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
 
     const [idButtonsLeft, setIdButtonsLeft] = useState(2)
 
+    // Define navigation based on user permissions
+    const isAdmin = user?.isAdmin === true;
+    const userPercentage = parseFloat(user?.percentage) || 0;
+    const userHasCenters = user?.centers && user.centers.length > 0;
+    const canAccessDashboard = isAdmin || (userHasCenters && userPercentage >= 50);
+    
+    const allNavigation = ["Dashboard", "Set up", "Transactions", "Reports", "Settings"];
+    const regularUserNavigation = canAccessDashboard ? 
+        ["Dashboard", "Transactions", "Settings"] : 
+        ["Transactions", "Settings"];
+    
+    const navigationItems = isAdmin ? allNavigation : regularUserNavigation;
+    
+    // Map admin navigation indices to regular user indices
+    let adjustedIdButtonsLeft;
+    if (isAdmin) {
+        adjustedIdButtonsLeft = idButtonsLeft;
+    } else if (canAccessDashboard) {
+        // Regular user with dashboard: [Dashboard=0, Transactions=1, Settings=2]
+        // Map from admin indices: Dashboard=0->0, Transactions=2->1, Settings=4->2
+        if (idButtonsLeft === 0) adjustedIdButtonsLeft = 0; // Dashboard
+        else if (idButtonsLeft === 2) adjustedIdButtonsLeft = 1; // Transactions
+        else if (idButtonsLeft === 4) adjustedIdButtonsLeft = 2; // Settings
+        else adjustedIdButtonsLeft = 1; // Default to Transactions
+    } else {
+        // Regular user without dashboard: [Transactions=0, Settings=1]
+        // Map from admin indices: Transactions=2->0, Settings=4->1
+        if (idButtonsLeft === 2) adjustedIdButtonsLeft = 0; // Transactions
+        else if (idButtonsLeft === 4) adjustedIdButtonsLeft = 1; // Settings
+        else adjustedIdButtonsLeft = 0; // Default to Transactions
+    }
+
+    // Custom click handler for regular users to map filtered indices to admin indices
+    const handleNavigationClick = (filteredIndex: number) => {
+        if (isAdmin) {
+            setIdButtonsLeft(filteredIndex);
+        } else if (canAccessDashboard) {
+            // Regular user with dashboard: [Dashboard=0, Transactions=1, Settings=2]
+            // Map to admin indices: Dashboard=0->0, Transactions=1->2, Settings=2->4
+            if (filteredIndex === 0) setIdButtonsLeft(0); // Dashboard
+            else if (filteredIndex === 1) setIdButtonsLeft(2); // Transactions
+            else if (filteredIndex === 2) setIdButtonsLeft(4); // Settings
+        } else {
+            // Regular user without dashboard: [Transactions=0, Settings=1]
+            // Map to admin indices: Transactions=0->2, Settings=1->4
+            if (filteredIndex === 0) setIdButtonsLeft(2); // Transactions
+            else if (filteredIndex === 1) setIdButtonsLeft(4); // Settings
+        }
+    };
+
+
+
     return <>
         <div className="bottom-bar-container">
             <Header user={user} />
         </div>
         <div className='d-flex flex-row' style={{ backgroundColor: "#FBFBFB", fontFamily: 'Inter, sans-serif' }}>
             <div style={{ width: "max-content" }}>
-                <LeftButtonsRadio buttonsName={["Dashboard", "Set up", "Transactions", "Reports", "Settings"]} idButtonsName={idButtonsLeft} setIdButtonsLeft={setIdButtonsLeft} setUser={setUser}/>
+                <LeftButtonsRadio buttonsName={navigationItems} idButtonsName={adjustedIdButtonsLeft} setIdButtonsLeft={handleNavigationClick} setUser={setUser}/>
             </div>
             <div>
-                {(idButtonsLeft == 0) && (
-                    <Dashboard data={data} />
+                {/* Admin users: full navigation */}
+                {isAdmin && (
+                    <>
+                        {(idButtonsLeft == 0) && (
+                            <Dashboard data={data} user={user} />
+                        )}
+                        {(idButtonsLeft == 1) && (
+                            <Setup data={data} reloadData={handleReload} user={user} />
+                        )}
+                        {idButtonsLeft == 2 && (
+                            <Transactions data={data} reloadData={handleReload} user={user} />
+                        )}
+                        {(idButtonsLeft == 3) && (
+                            <Reports data={data}/>
+                        )}
+                        {(idButtonsLeft == 4) && (
+                            <Settings user={user}/>
+                        )}
+                    </>
                 )}
-                {(idButtonsLeft == 1) && (
-                    <Setup data={data} reloadData={handleReload} user={user} />
-                )}
-                {idButtonsLeft == 2 && (
-                    <Transactions data={data} reloadData={handleReload} user={user} />
-                )}
-                {(idButtonsLeft == 3) && (
-                    <Reports data={data}/>
-                )}
-                {(idButtonsLeft == 4) && (
-                    <Settings user={user}/>
+                
+                {/* Regular users: limited navigation */}
+                {!isAdmin && (
+                    <>
+                        {/* Dashboard for qualified regular users (centers assigned + ≥50% permission) */}
+                        {adjustedIdButtonsLeft == 0 && canAccessDashboard && (
+                            <Dashboard data={data} user={user} />
+                        )}
+                        {/* Transactions */}
+                        {((adjustedIdButtonsLeft == 1 && canAccessDashboard) || (adjustedIdButtonsLeft == 0 && !canAccessDashboard)) && (
+                            <Transactions data={data} reloadData={handleReload} user={user} />
+                        )}
+                        {/* Settings */}
+                        {((adjustedIdButtonsLeft == 2 && canAccessDashboard) || (adjustedIdButtonsLeft == 1 && !canAccessDashboard)) && (
+                            <Settings user={user}/>
+                        )}
+                    </>
                 )}
             </div>
         </div>

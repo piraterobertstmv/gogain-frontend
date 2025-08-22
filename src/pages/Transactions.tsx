@@ -99,10 +99,21 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         "transaction"
     ];
 
-    const centerIds = Array.isArray(data.center) ? data.center.map((item: any) => item._id) : [];
+    // Filter available options based on user permissions
+    const isAdmin = user?.isAdmin === true;
+    const userCenterIds = user?.centers || [];
+    const userServiceIds = user?.services || [];
+    
+    const centerIds = Array.isArray(data.center) ? 
+        (isAdmin ? data.center.map((item: any) => item._id) : 
+         data.center.filter((item: any) => userCenterIds.includes(item._id)).map((item: any) => item._id)) : [];
+    
     const clientIds = Array.isArray(data.client) ? data.client.map((item: any) => item._id) : [];
     const workerIds = Array.isArray(data.users) ? data.users.map((item: any) => item._id) : [];
-    const serviceIds = Array.isArray(data.service) ? data.service.map((item: any) => item._id) : [];
+    
+    const serviceIds = Array.isArray(data.service) ? 
+        (isAdmin ? data.service.map((item: any) => item._id) : 
+         data.service.filter((item: any) => userServiceIds.includes(item._id)).map((item: any) => item._id)) : [];
 
     const [filtersCenter, setFiltersCenter] = useState<string[]>([]);
     const [filtersClient, setFiltersClient] = useState<string[]>([]);

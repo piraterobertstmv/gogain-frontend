@@ -47,10 +47,19 @@ function App() {
             });
             const data = await response.json();
             if (response.ok) {
+                console.log("=== CURRENT USER DATA ===");
+                console.log("User:", data);
+                console.log("isAdmin:", data.isAdmin);
+                console.log("centers:", data.centers);
+                console.log("centers type:", typeof data.centers, Array.isArray(data.centers));
+                if (data.centers) {
+                    console.log("centers content:", data.centers.map((c, i) => `[${i}]: ${c}`));
+                }
+                console.log("========================");
                 setUser(data);
             } else {
                 localStorage.removeItem('authToken');
-            }
+            } 
         } catch (error) {
             console.error('Failed to fetch user data:', error);
             localStorage.removeItem('authToken');

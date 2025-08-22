@@ -4,7 +4,7 @@ import { PiePlotRevenue } from "./dashboard/PiePlotRevenue";
 import { RevenuePerEmploye } from './dashboard/RevenuePerEmploye';
 import { CenterDatasView } from './CenterDatasView'
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import "./dashboard.css"
 
@@ -26,15 +26,7 @@ function applyFilter(data: any, colName: string, whiteListId: string[], dateRang
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
-    console.log("Filtering with:", {
-        colName,
-        whiteListId,
-        dateRange,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        centerFilter,
-        totalTransactions: data.transaction.length
-    });
+    // Filtering transactions
 
     // Directly iterate over the array
     data.transaction.forEach((value: any) => {
@@ -44,35 +36,21 @@ function applyFilter(data: any, colName: string, whiteListId: string[], dateRang
         if (whiteListId.includes(value[colName])) {
             if (targetDate >= startDate && targetDate <= endDate) {
                 if (centerFilter.length === 0 || centerFilter.includes(value.center)) {
-                    console.log("Including transaction:", {
-                        id: value._id,
-                        date: value.date,
-                        type: value.typeOfTransaction,
-                        amount: value.cost + value.taxes
-                    });
+                                    // Transaction included in filter
                     filteredData.push(value);
                 }
             }
         }
     });
 
-    console.log("Filtered data summary:", {
-        count: filteredData.length,
-        costs: filteredData.filter(t => t.typeOfTransaction === "cost").length,
-        revenues: filteredData.filter(t => t.typeOfTransaction === "revenue").length
-    });
+    // Filtered data ready
     
     return filteredData;
 }
 
 // sumRevenuPerColName(dataFiltered, "center")
 function sumRevenuPerColName(dataFiltered: any, colName: string, arrOfCol: string[], isCumul: boolean) {
-    console.log("Calculating sums for:", {
-        dataLength: dataFiltered.length,
-        colName,
-        arrOfColLength: arrOfCol.length,
-        isCumul
-    });
+    // Calculating sums
 
     let sumData: any[] = []
 
@@ -89,15 +67,7 @@ function sumRevenuPerColName(dataFiltered: any, colName: string, arrOfCol: strin
                 // Calculate total amount including taxes
                 const totalAmount = value.cost + value.taxes;
                 
-                console.log("Processing transaction:", {
-                    id: value._id,
-                    type: value.typeOfTransaction,
-                    cost: value.cost,
-                    taxes: value.taxes,
-                    total: totalAmount,
-                    date: value.date,
-                    colName: value[colName]
-                });
+                // Processing transaction
 
                 if (value.typeOfTransaction === "cost") {
                     sumData[i].costs += totalAmount;
@@ -117,7 +87,7 @@ function sumRevenuPerColName(dataFiltered: any, colName: string, arrOfCol: strin
         sumData[i].revenues = parseFloat((sumData[i].revenues).toFixed(2));
     }
 
-    console.log("Final calculation results:", sumData);
+    // Calculation complete
     return sumData;
 }
 
@@ -156,14 +126,7 @@ function sumRevenuPerColNamePerDate(dataFiltered: any, colName: string, data: an
         const name = findNameWithId(data, value[colName], colInData);
         const totalAmount = value.cost + value.taxes;
 
-        console.log("Processing monthly transaction:", {
-            id: value._id,
-            month: monthNumber,
-            name,
-            type: value.typeOfTransaction,
-            amount: totalAmount,
-            calcMode: idCalculus
-        });
+        // Processing monthly transaction
 
         switch (idCalculus) {
             case 0: // Revenue only
@@ -215,7 +178,7 @@ function sumRevenuPerColNamePerDate(dataFiltered: any, colName: string, data: an
         });
     }
 
-    console.log("Monthly calculation results:", sumDataDate);
+    // Monthly calculation complete
     return sumDataDate;
 }
 
@@ -283,7 +246,7 @@ function sumRevenuPerColNamePerDay(dataFiltered: any, colName: string, data: any
     return sumData;
 }
 
-export function Dashboard({ data }: { data: any }) {
+export function Dashboard({ data, user }: { data: any, user?: any }) {
     // Get initial date values
     const now = new Date();
     const initialYear = now.getFullYear();
@@ -305,9 +268,29 @@ export function Dashboard({ data }: { data: any }) {
     const [isGraphicView, setIsGraphicView] = useState<boolean>(true);
     const [idButtons, setIdButtons] = useState<number>(0);
 
-    // Initialize centers and employees
-    const centers = data?.center?.map((item: { _id: string }) => item._id) || [];
-    const employes = data?.users?.map((item: { _id: string }) => item._id) || [];
+    // Initialize centers and employees based on user permissions
+    const isAdmin = user?.isAdmin === true;
+    const userCenterIds = user?.centers || [];
+    
+    // For admins: show all centers and employees
+    // For regular users: show only assigned centers and related employees
+    const allCenters = useMemo(() => data?.center?.map((item: { _id: string }) => item._id) || [], [data?.center]);
+    const allEmployees = useMemo(() => data?.users?.map((item: { _id: string }) => item._id) || [], [data?.users]);
+    
+    // Memoize filtered centers and employees to prevent infinite re-renders
+    const centers = useMemo(() => {
+        return isAdmin ? allCenters : userCenterIds.filter((centerId: string) => allCenters.includes(centerId));
+    }, [isAdmin, allCenters, userCenterIds]);
+    
+    const employes = useMemo(() => {
+        return isAdmin ? allEmployees : 
+            allEmployees.filter((employeeId: string) => {
+                const employee = data?.users?.find((u: any) => u._id === employeeId);
+                return employee?.centers?.some((centerIds: string) => userCenterIds.includes(centerIds));
+            });
+    }, [isAdmin, allEmployees, userCenterIds, data?.users]);
+    
+
 
     // Initialize date filters with proper formatting
     const formatDate = (year: number, month: number, day: number) => {
@@ -330,20 +313,7 @@ export function Dashboard({ data }: { data: any }) {
     const differenceInMs = Math.abs(date1.getTime() - date2.getTime());
     const differenceInDays = differenceInMs / (1000 * 60 * 60 * 24);
 
-    // Debug log for incoming data
-    console.log("Dashboard received data:", {
-        transactionCount: data?.transaction?.length || 0,
-        centerCount: data?.center?.length || 0,
-        userCount: data?.users?.length || 0,
-        transactions: data?.transaction?.map((t: any) => ({
-            id: t._id,
-            date: t.date,
-            type: t.typeOfTransaction,
-            cost: t.cost,
-            taxes: t.taxes,
-            total: t.cost + t.taxes
-        }))
-    });
+    // Dashboard data received
 
     useEffect(() => {
         if (!data?.transaction) return;
@@ -353,24 +323,13 @@ export function Dashboard({ data }: { data: any }) {
         setPiePlotRevenueItems(centers);
         setRevenuePerEmployeItems(employes);
 
-        // Log data for debugging
-        console.log("Dashboard data updated:", {
-            transactionCount: data.transaction.length,
-            year: currentYear,
-            month: monthNumber,
-            days: maxDays
-        });
+        // Dashboard data updated
     }, [data, centers, employes]); // Add dependencies
 
     useEffect(() => {
         if (!data?.transaction) return;
 
-        console.log("Calculating financial items with:", {
-            currentYear,
-            monthNumber,
-            maxDays,
-            transactionCount: data.transaction.length
-        });
+        // Calculating financial items
 
         // Get filtered data for each calculation
         const financialData = applyFilter(
@@ -397,11 +356,7 @@ export function Dashboard({ data }: { data: any }) {
             filterCenterEmploye
         );
 
-        console.log("Filtered data:", {
-            financial: financialData.length,
-            piePlot: piePlotData.length,
-            employee: employeeData.length
-        });
+        // Data filtered
 
         // Calculate sums and update state
         sumRevenuPerColName(financialData, "center", centers, false);
@@ -463,27 +418,7 @@ export function Dashboard({ data }: { data: any }) {
     const dataFilteredPiePlot = applyFilter(data, "center", piePlotRevenueItems,[`${filterPieDateBegin}T00:00:00.000Z`, `${filterPieDateEnd}T00:00:00.000Z`], [])
     const dataFilteredPerEmp = applyFilter(data, "worker", revenuePerEmployeItems, [`${filterRevDateBegin}T00:00:00.000Z`, `${filterRevDateEnd}T00:00:00.000Z`], filterCenterEmploye)
 
-    // Add debug logging for filtered data
-    useEffect(() => {
-        const februaryData = dataFilteredFinancial.filter((t: any) => {
-            const date = new Date(t.date);
-            return date.getMonth() === 1; // February is month 1
-        });
-
-        console.log("Filtered Data Debug:", {
-            totalFiltered: dataFilteredFinancial.length,
-            februaryTransactions: februaryData.map((t: any) => ({
-                id: t._id,
-                date: t.date,
-                type: t.typeOfTransaction,
-                amount: t.cost + t.taxes
-            })),
-            currentFilters: {
-                centers: financialTransItems,
-                dateRange: [`${filterFinDateBegin}T00:00:00.000Z`, `${filterFinDateEnd}T00:00:00.000Z`]
-            }
-        });
-    }, [dataFilteredFinancial, financialTransItems, filterFinDateBegin, filterFinDateEnd]);
+    // Data filtering complete
 
     return <>
         <div>

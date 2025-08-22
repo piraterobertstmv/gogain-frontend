@@ -17,7 +17,7 @@ export function Login({setUser}: {setUser: any}) {
         
         console.log('Attempting login with:', { email });
         // Use environment variable for API URL instead of localhost
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+                    const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
         console.log('API URL:', apiUrl);
         
         // Add more debugging information

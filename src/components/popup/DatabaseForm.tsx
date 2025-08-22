@@ -85,7 +85,13 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return
 
         let updatedData = { ...dataToSendApi };
-        updatedData[fieldName] = value
+        
+        // Convert admin status immediately when changed
+        if (fieldName === "isAdmin") {
+            updatedData[fieldName] = value === "ADMINISTRATOR";
+        } else {
+            updatedData[fieldName] = value;
+        }
 
         setDataToSendApi(updatedData)
     }
@@ -209,24 +215,39 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
         if (colNameDb == "users") {
             dataToSendApi["password"] = "password"
-            if (!("percentage" in dataToSendApi) || dataToSendApi.percentage === "") {
-                dataToSendApi["percentage"] = 0;
-            } else {
+            
+            // Only set percentage if it's actually being updated, otherwise preserve existing value
+            if ("percentage" in dataToSendApi && dataToSendApi.percentage !== "") {
                 // Convert percentage string to number
                 dataToSendApi["percentage"] = parseFloat(dataToSendApi.percentage) || 0;
+            } else if (defaultValue !== null && !("percentage" in dataToSendApi)) {
+                // Preserve existing percentage when editing user without changing percentage
+                dataToSendApi["percentage"] = defaultValue.percentage;
+            } else if (defaultValue === null) {
+                // Only set to 0 for new users
+                dataToSendApi["percentage"] = 0;
             }
+            
             if (!("centers" in dataToSendApi) || !dataToSendApi.centers) {
                 dataToSendApi["centers"] = [];
             }
             if (!("services" in dataToSendApi) || !dataToSendApi.services) {
                 dataToSendApi["services"] = [];
             }
-            if (!("isAdmin" in dataToSendApi)) {
-                dataToSendApi["isAdmin"] = false;
+            
+            // FORCE convert isAdmin to boolean - handle all cases
+            if ("isAdmin" in dataToSendApi) {
+                const currentValue = dataToSendApi["isAdmin"];
+                if (currentValue === "ADMINISTRATOR" || currentValue === true) {
+                    dataToSendApi["isAdmin"] = true;
+                } else {
+                    dataToSendApi["isAdmin"] = false;
+                }
             } else {
-                // Convert display string to boolean
-                dataToSendApi["isAdmin"] = dataToSendApi["isAdmin"] === "ADMINISTRATOR";
+                // Field not in dataToSendApi - preserve existing value or default to false
+                dataToSendApi["isAdmin"] = (defaultValue !== null && defaultValue.isAdmin === true) ? true : false;
             }
+            console.log('Final isAdmin value:', dataToSendApi["isAdmin"], typeof dataToSendApi["isAdmin"]);
         }
 
         if (colNameDb == "client") {
@@ -254,6 +275,9 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return;
 
         try {
+            // Debug: Log the data being sent
+            console.log('Data being sent to API:', dataToSendApi);
+            
             // Use environment variable for API URL instead of hardcoded localhost
             const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
             
@@ -311,6 +335,8 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
         setDataToSendApi(updatedData)
     }, [dataToSendApi.service]);
+
+
 
     const [isCosts, setIsCosts] = useState(defaultValue == null ? "revenue" : defaultValue.typeOfTransaction)
     
