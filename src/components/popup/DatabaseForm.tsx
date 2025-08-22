@@ -228,11 +228,20 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                 dataToSendApi["percentage"] = 0;
             }
             
-            if (!("centers" in dataToSendApi) || !dataToSendApi.centers) {
-                dataToSendApi["centers"] = [];
+            // Preserve existing centers and services when not being updated
+            if (!("centers" in dataToSendApi)) {
+                if (defaultValue !== null && defaultValue.centers) {
+                    dataToSendApi["centers"] = defaultValue.centers;
+                } else {
+                    dataToSendApi["centers"] = [];
+                }
             }
-            if (!("services" in dataToSendApi) || !dataToSendApi.services) {
-                dataToSendApi["services"] = [];
+            if (!("services" in dataToSendApi)) {
+                if (defaultValue !== null && defaultValue.services) {
+                    dataToSendApi["services"] = defaultValue.services;
+                } else {
+                    dataToSendApi["services"] = [];
+                }
             }
             
             // FORCE convert isAdmin to boolean - handle all cases
