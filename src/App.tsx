@@ -53,7 +53,7 @@ function App() {
                 console.log("centers:", data.centers);
                 console.log("centers type:", typeof data.centers, Array.isArray(data.centers));
                 if (data.centers) {
-                    console.log("centers content:", data.centers.map((c, i) => `[${i}]: ${c}`));
+                    console.log("centers content:", data.centers.map((c: any, i: number) => `[${i}]: ${c}`));
                 }
                 console.log("========================");
                 setUser(data);
