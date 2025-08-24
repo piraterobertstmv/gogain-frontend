@@ -20,7 +20,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
         const fetchData = async () => {
             try {
                 // Use environment variable for API URL instead of hardcoded localhost
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
                 console.log('Application: Using API URL:', apiUrl);
                 
                 // Get the authentication token

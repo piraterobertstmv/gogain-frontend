@@ -186,7 +186,7 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
         const fetchData = async () => {
             try {
                 // Use environment variable for API URL instead of hardcoded localhost
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
                 
                 const response = await fetch(`${apiUrl}${colNameDb}/${defaultValue._id}`, {
                     method: 'DELETE',
@@ -288,7 +288,7 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             console.log('Data being sent to API:', dataToSendApi);
             
             // Use environment variable for API URL instead of hardcoded localhost
-            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
             
             const response = await fetch(`${apiUrl}${colNameDb}${isModifyOrNew}`, {
                 method: isModifyOrNew === "" ? "POST" : "PATCH",

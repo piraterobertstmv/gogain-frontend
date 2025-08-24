@@ -80,10 +80,42 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
 
     React.useEffect(() => {
         if (data[column]) {
-            // For transactions, show all by default
+            // For transactions, apply filters
             if (column === "transaction") {
-                // Just show all transactions initially
-                setRows(data[column]);
+                let filteredData = [...data[column]];
+                
+                // Apply filters if they exist
+                if (filters) {
+                    // Filter by center
+                    if (filters.center && filters.center.length > 0) {
+                        filteredData = filteredData.filter((line: any) => 
+                            filters.center.includes(line.center)
+                        );
+                    }
+                    
+                    // Filter by client
+                    if (filters.client && filters.client.length > 0) {
+                        filteredData = filteredData.filter((line: any) => 
+                            filters.client.includes(line.client)
+                        );
+                    }
+                    
+                    // Filter by worker
+                    if (filters.worker && filters.worker.length > 0) {
+                        filteredData = filteredData.filter((line: any) => 
+                            filters.worker.includes(line.worker)
+                        );
+                    }
+                    
+                    // Filter by service
+                    if (filters.service && filters.service.length > 0) {
+                        filteredData = filteredData.filter((line: any) => 
+                            filters.service.includes(line.service)
+                        );
+                    }
+                }
+                
+                setRows(filteredData);
                 
                 // Populate filter options
                 data[column].forEach((line: any) => {
@@ -113,27 +145,79 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
         visibleRows++;
     });
 
+    // Helper function to get filter display names
+    const getFilterDisplayNames = (filterIds: string[], mapping: Record<string, string>) => {
+        return filterIds.map(id => mapping[id] || id).join(', ');
+    };
+
+    // Check if any filters are active
+    const hasActiveFilters = filters && (
+        (filters.center && filters.center.length > 0) ||
+        (filters.client && filters.client.length > 0) ||
+        (filters.worker && filters.worker.length > 0) ||
+        (filters.service && filters.service.length > 0)
+    );
+
     return (
-        <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
-            <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
-            <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
-                {rows.map((dataRow: any, index: number) => {
-                    return (
-                        <TableRow 
-                            column={column} 
-                            key={index} 
-                            dataRow={dataRow} 
-                            data={{...data, entityMappings}} 
-                            indexIn={index + 1} 
-                            deleteColumns={deleteColumns} 
-                            resetDataFunc={resetDataFunc} 
-                            user={user} 
-                            deleteFunction={deleteFunction} 
-                            deleteLines={deleteLines}
-                        />
-                    );
-                })}
-            </tbody>
-        </table>
+        <>
+            {/* Active Filters Display */}
+            {column === "transaction" && hasActiveFilters && (
+                <div style={{ 
+                    marginBottom: '10px', 
+                    padding: '8px 12px', 
+                    backgroundColor: '#f8f9fa', 
+                    border: '1px solid #dee2e6', 
+                    borderRadius: '4px',
+                    fontSize: '14px'
+                }}>
+                    <strong>Active Filters:</strong>
+                    {filters.center && filters.center.length > 0 && (
+                        <span style={{ marginLeft: '15px' }}>
+                            <strong>Center:</strong> {getFilterDisplayNames(filters.center, entityMappings.centers)}
+                        </span>
+                    )}
+                    {filters.client && filters.client.length > 0 && (
+                        <span style={{ marginLeft: '15px' }}>
+                            <strong>Client:</strong> {getFilterDisplayNames(filters.client, entityMappings.clients)}
+                        </span>
+                    )}
+                    {filters.worker && filters.worker.length > 0 && (
+                        <span style={{ marginLeft: '15px' }}>
+                            <strong>Worker:</strong> {getFilterDisplayNames(filters.worker, entityMappings.workers)}
+                        </span>
+                    )}
+                    {filters.service && filters.service.length > 0 && (
+                        <span style={{ marginLeft: '15px' }}>
+                            <strong>Service:</strong> {getFilterDisplayNames(filters.service, entityMappings.services)}
+                        </span>
+                    )}
+                    <span style={{ marginLeft: '15px', color: '#6c757d' }}>
+                        Showing {rows.length} of {data[column]?.length || 0} transactions
+                    </span>
+                </div>
+            )}
+            
+            <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
+                <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
+                <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
+                    {rows.map((dataRow: any, index: number) => {
+                        return (
+                            <TableRow 
+                                column={column} 
+                                key={index} 
+                                dataRow={dataRow} 
+                                data={{...data, entityMappings}} 
+                                indexIn={index + 1} 
+                                deleteColumns={deleteColumns} 
+                                resetDataFunc={resetDataFunc} 
+                                user={user} 
+                                deleteFunction={deleteFunction} 
+                                deleteLines={deleteLines}
+                            />
+                        );
+                    })}
+                </tbody>
+            </table>
+        </>
     )
 }

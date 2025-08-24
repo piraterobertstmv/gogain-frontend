@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   define: {
-    // Explicitly define API URL for production 
-    'import.meta.env.VITE_API_URL': JSON.stringify('https://gogain-backend.onrender.com/')
+    // Explicitly define API URL for development
+    'import.meta.env.VITE_API_URL': JSON.stringify('http://localhost:3001/')
   },
 })

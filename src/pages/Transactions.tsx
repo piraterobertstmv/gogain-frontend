@@ -49,7 +49,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         const checkBackend = async () => {
             try {
                 // Use environment variable for API URL
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
                 console.log('Checking backend connection to:', apiUrl);
                 
                 const response = await fetch(apiUrl, {
@@ -101,24 +101,68 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     // Filter available options based on user permissions
     const isAdmin = user?.isAdmin === true;
+    const userPercentage = parseFloat(user?.percentage) || 0;
     const userCenterIds = user?.centers || [];
     const userServiceIds = user?.services || [];
     
+    // Determine user's permission level
+    const canFilter = isAdmin; // Only admins can filter
+    const canSeeAllData = isAdmin;
+    
+    // Center IDs: Admins see all, regular users see only assigned centers
     const centerIds = Array.isArray(data.center) ? 
-        (isAdmin ? data.center.map((item: any) => item._id) : 
+        (canSeeAllData ? data.center.map((item: any) => item._id) : 
          data.center.filter((item: any) => userCenterIds.includes(item._id)).map((item: any) => item._id)) : [];
     
-    const clientIds = Array.isArray(data.client) ? data.client.map((item: any) => item._id) : [];
-    const workerIds = Array.isArray(data.users) ? data.users.map((item: any) => item._id) : [];
+    // Client IDs: Only admins can filter by client
+    const clientIds = Array.isArray(data.client) ? 
+        (canSeeAllData ? data.client.map((item: any) => item._id) : []) : [];
     
+    // Worker IDs: Only admins can filter by worker
+    const workerIds = Array.isArray(data.users) ? 
+        (canSeeAllData ? data.users.map((item: any) => item._id) : []) : [];
+    
+    // Service IDs: Only admins can filter by service
     const serviceIds = Array.isArray(data.service) ? 
-        (isAdmin ? data.service.map((item: any) => item._id) : 
-         data.service.filter((item: any) => userServiceIds.includes(item._id)).map((item: any) => item._id)) : [];
-
+        (canSeeAllData ? data.service.map((item: any) => item._id) : []) : [];
+    
     const [filtersCenter, setFiltersCenter] = useState<string[]>([]);
     const [filtersClient, setFiltersClient] = useState<string[]>([]);
     const [filtersWorker, setFiltersWorker] = useState<string[]>([]);
     const [filtersService, setFiltersService] = useState<string[]>([]);
+    
+    // Debug logging for filter permissions
+    console.log('Transactions Filter Permissions:', {
+        isAdmin,
+        userPercentage,
+        canFilter: 'Only admins can filter',
+        canSeeAllData,
+        userCenterIds,
+        userServiceIds,
+        centerIdsCount: centerIds.length,
+        clientIdsCount: clientIds.length,
+        workerIdsCount: workerIds.length,
+        serviceIdsCount: serviceIds.length
+    });
+    
+    // Debug logging for current filter states
+    console.log('Current Filter States:', {
+        filtersCenter,
+        filtersClient,
+        filtersWorker,
+        filtersService
+    });
+    
+    // Initialize filters based on user permissions
+    React.useEffect(() => {
+        if (!canFilter) {
+            // For regular users (any percentage), automatically set center filter to their assigned centers
+            setFiltersCenter(userCenterIds);
+            setFiltersClient([]);
+            setFiltersWorker([]);
+            setFiltersService([]);
+        }
+    }, [canFilter, userCenterIds]);
 
     const [deleteLines, setDeleteLines] = useState<string[]>([])
     const [isDeleting, setIsDeleting] = useState(false);
@@ -153,7 +197,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         });
     };
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
@@ -331,18 +375,59 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginTop: "1vh" }}>
-            <MultiFilterInput name='Center' data={data}  availableFilters={centerIds}  modifyFilter={setFiltersCenter}/>
-            <MultiFilterInput name='Client' data={data}  availableFilters={clientIds}  modifyFilter={setFiltersClient}/>
-            <MultiFilterInput name='Worker' data={data}  availableFilters={workerIds}  modifyFilter={setFiltersWorker}/>
-            <MultiFilterInput name='Service' data={data} availableFilters={serviceIds} modifyFilter={setFiltersService}/>
+            {/* Center filter: Only for admins */}
+            {canFilter && (
+                <MultiFilterInput name='Center' data={data} availableFilters={centerIds} modifyFilter={setFiltersCenter}/>
+            )}
+            
+            {/* Client filter: Only for admins */}
+            {canFilter && (
+                <MultiFilterInput name='Client' data={data} availableFilters={clientIds} modifyFilter={setFiltersClient}/>
+            )}
+            
+            {/* Worker filter: Only for admins */}
+            {canFilter && (
+                <MultiFilterInput name='Worker' data={data} availableFilters={workerIds} modifyFilter={setFiltersWorker}/>
+            )}
+            
+            {/* Service filter: Only for admins */}
+            {canFilter && (
+                <MultiFilterInput name='Service' data={data} availableFilters={serviceIds} modifyFilter={setFiltersService}/>
+            )}
+            
+            {/* Clear All Filters Button: Only for admins */}
+            {canFilter && (filtersCenter.length > 0 || filtersClient.length > 0 || filtersWorker.length > 0 || filtersService.length > 0) && (
+                <Button 
+                    onClick={() => {
+                        setFiltersCenter([]);
+                        setFiltersClient([]);
+                        setFiltersWorker([]);
+                        setFiltersService([]);
+                    }}
+                    style={{ 
+                        marginLeft: '10px', 
+                        backgroundColor: "#6c757d", 
+                        border: "solid 0.5px #6c757d", 
+                        color: "#ffffff",
+                        fontSize: '12px',
+                        padding: '4px 8px'
+                    }}
+                >
+                    Clear All Filters
+                </Button>
+            )}
+            
+            {/* Spacer to push scroll button to the right with proper separation */}
+            <div style={{ flex: 1 }}></div>
+            
             {showScrollDown && (
                 <button
-                    className="ml-auto bg-white rounded-full shadow p-2 flex items-center justify-center hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="bg-white rounded-full shadow p-2 flex items-center justify-center hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     aria-label="Scroll to bottom"
                     tabIndex={0}
                     onClick={handleScrollToBottom}
                     onKeyDown={handleKeyDownDown}
-                    style={{ height: '33px', width: '33px' }}
+                    style={{ height: '33px', width: '33px', marginLeft: '20px' }}
                 >
                     <FaArrowDown className="w-5 h-5 text-gray-700" />
                 </button>
