@@ -5,7 +5,7 @@ export function InputClient({ name, addOrModifyValueInBodyApi, data, defaultValu
     const [client, setClient] = useState(defaultValue)
     const [searchText, setSearchText] = useState(findNameWithId(data, defaultValue, "client"));
     const [showDropdown, setShowDropdown] = useState(false);
-    const clientsAvailable: object[] = data.client || []
+    const clientsAvailable: any[] = data.client || []
 
     const filteredClients = clientsAvailable.filter((client: any) =>
         (client.lastName + " " + client.firstName).toLowerCase().includes(searchText.toLowerCase())
