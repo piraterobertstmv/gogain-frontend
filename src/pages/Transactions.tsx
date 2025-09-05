@@ -49,7 +49,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         const checkBackend = async () => {
             try {
                 // Use environment variable for API URL
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
                 console.log('Checking backend connection to:', apiUrl);
                 
                 const response = await fetch(apiUrl, {
@@ -197,7 +197,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         });
     };
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {

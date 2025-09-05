@@ -15,7 +15,7 @@ let pingInterval: number | null = null;
  */
 const pingBackend = async () => {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
     console.log('Keeping backend alive with ping request');
     
     const response = await fetch(`${apiUrl}ping`, {

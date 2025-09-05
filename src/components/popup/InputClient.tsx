@@ -1,14 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { findNameWithId } from '../../tools/tools'
 
 export function InputClient({ name, addOrModifyValueInBodyApi, data, defaultValue, errorValue, isSupplier } : { name: string, addOrModifyValueInBodyApi: any, data: any, defaultValue: string, errorValue: string, isSupplier: string }) {
     const [client, setClient] = useState(defaultValue)
     const [searchText, setSearchText] = useState(findNameWithId(data, defaultValue, "client"));
-    const clientsAvailable: object[] = data.client
+    const [showDropdown, setShowDropdown] = useState(false);
+    const clientsAvailable: object[] = data.client || []
 
     const filteredClients = clientsAvailable.filter((client: any) =>
         (client.lastName + " " + client.firstName).toLowerCase().includes(searchText.toLowerCase())
     )
+
+    // Update client value when search text changes
+    useEffect(() => {
+        if (searchText && filteredClients.length === 0) {
+            // If no matching clients found, use the search text as new client name
+            addOrModifyValueInBodyApi(name, searchText);
+        }
+    }, [searchText, filteredClients.length, name, addOrModifyValueInBodyApi]);
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setSearchText(value);
+        setShowDropdown(value.length > 0);
+        
+        // If typing and no exact match, treat as new client
+        const exactMatch = filteredClients.find((client: any) => 
+            (client.lastName + " " + client.firstName).toLowerCase() === value.toLowerCase()
+        );
+        
+        if (exactMatch) {
+            setClient(exactMatch._id);
+            addOrModifyValueInBodyApi(name, exactMatch._id);
+        } else {
+            // New client name
+            setClient(value);
+            addOrModifyValueInBodyApi(name, value);
+        }
+    };
+
+    const selectExistingClient = (selectedClient: any) => {
+        setClient(selectedClient._id);
+        setSearchText(selectedClient.lastName + " " + selectedClient.firstName);
+        addOrModifyValueInBodyApi(name, selectedClient._id);
+        setShowDropdown(false);
+    };
+
+    const createNewClient = () => {
+        setClient(searchText);
+        addOrModifyValueInBodyApi(name, searchText);
+        setShowDropdown(false);
+    };
 
     return <>
         <div className="mb-3">
@@ -22,48 +64,61 @@ export function InputClient({ name, addOrModifyValueInBodyApi, data, defaultValu
                     className="form-control"
                     id="transactionClient"
                     aria-label="transactionClient"
+                    placeholder="Enter supplier name..."
                 />
                 </>
             ) : (
                 <>
-                <div>
+                <div style={{ position: "relative" }}>
                     <label htmlFor="transactionClient" className="form-label">{"Client"}</label>
                     <input
                         type="text"
                         className="form-control"
-                        placeholder="Search client..."
+                        placeholder="Search or type new client name..."
                         value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
+                        onChange={handleSearchChange}
+                        onFocus={() => setShowDropdown(searchText.length > 0)}
+                        onBlur={() => setTimeout(() => setShowDropdown(false), 200)} // Delay to allow clicking dropdown
                         id="transactionClient"
                         aria-label="transactionClient"
                     />
-                    <div className="dropdown-menu" style={{ display: (searchText && filteredClients.length !== 1) ? "block" : "none", position: "absolute" }}>
-                        {filteredClients.map((client: any) => (
-                            <button
-                                key={client._id}
-                                className="dropdown-item"
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    setClient(client._id);
-                                    setSearchText(client.lastName + " " + client.firstName);
-                                    addOrModifyValueInBodyApi(name, client._id);
-                                }}
-                            >
-                                {client.lastName + " " + client.firstName}
-                            </button>
-                        ))}
-                        {filteredClients.length === 0 && (
-                            <span className="dropdown-item">No results found</span>
-                        )}
-                    </div>
+                    {showDropdown && (
+                        <div className="dropdown-menu" style={{ display: "block", position: "absolute", zIndex: 1000, width: "100%" }}>
+                            {filteredClients.map((client: any) => (
+                                <button
+                                    key={client._id}
+                                    type="button"
+                                    className="dropdown-item"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        selectExistingClient(client);
+                                    }}
+                                >
+                                    {client.lastName + " " + client.firstName}
+                                </button>
+                            ))}
+                            {filteredClients.length === 0 && searchText.trim() && (
+                                <button
+                                    type="button"
+                                    className="dropdown-item text-primary"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        createNewClient();
+                                    }}
+                                >
+                                    <strong>+ Create new client: "{searchText}"</strong>
+                                </button>
+                            )}
+                            {filteredClients.length === 0 && !searchText.trim() && (
+                                <span className="dropdown-item text-muted">Start typing to search or create new client</span>
+                            )}
+                        </div>
+                    )}
                     {(errorValue !== "") && (
                         <span style={{ color: 'red' }}>{errorValue}</span>
                     )}
                 </div>
                 </>
-            )}
-            {(errorValue !== "") && (
-                <span style={{ color: 'red' }}>{errorValue}</span>
             )}
         </div>
     </>
