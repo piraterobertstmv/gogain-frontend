@@ -17,13 +17,10 @@ export function Setup({ data, reloadData, user } : { data: any, reloadData: any,
     const [idButtons, setIdButtons] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const buttonsName: string[] = [
-        "users",
-        "client",
-        "center",
-        "service",
-        "costs"
-    ];
+    // Filter buttons based on user permissions
+    const isAdmin = user?.isAdmin === true;
+    const allButtons = ["users", "client", "center", "service", "costs"];
+    const buttonsName: string[] = isAdmin ? allButtons : allButtons.filter(button => button !== "users");
 
     // Filter data based on search term for users table
     const filteredData = useMemo(() => {
@@ -48,11 +45,14 @@ export function Setup({ data, reloadData, user } : { data: any, reloadData: any,
 
     return <>
     <div className='p-5' style={{height: "100vh", overflow:"auto"}}>
-    <div style={{ display: "flex", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center" }}>
             <ButtonsRadio buttonsName={buttonsName} onChangeFunction={setIdButtons} selectedButton={idButtons}/>
-            <Button className='m-2'style={{ borderRadius: "25px", backgroundColor: "#F2F2F2", color:"#706762", borderColor: 'transparent', height: "33px", width: "33px", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={handleShow}>
-                +
-            </Button>
+            {/* Hide add button for users table if not admin, or show for all other tables */}
+            {(isAdmin || buttonsName[idButtons] !== "users") && (
+                <Button className='m-2'style={{ borderRadius: "25px", backgroundColor: "#F2F2F2", color:"#706762", borderColor: 'transparent', height: "33px", width: "33px", display: "flex", alignItems: "center", justifyContent: "center" }} onClick={handleShow}>
+                    +
+                </Button>
+            )}
         </div>
 
         {/* Search input for users table */}

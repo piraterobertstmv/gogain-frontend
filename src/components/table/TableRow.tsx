@@ -38,7 +38,16 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
         setShow(false)
         resetDataFunc()
     }
-    const handleShow = () => setShow(true);
+    
+    // Check if user can edit this type of data
+    const isAdmin = user?.isAdmin === true;
+    const canEdit = isAdmin || column !== "users";
+    
+    const handleShow = () => {
+        if (canEdit) {
+            setShow(true);
+        }
+    };
 
     const findCorrectValue = (key: string, value: any) => {
         function findWithId(dataFiltered: any, id: string) {
@@ -311,7 +320,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
         return (
             <>
-                <tr onClick={handleShow} ref={rowRef}>
+                <tr onClick={handleShow} ref={rowRef} style={{ cursor: canEdit ? "pointer" : "default", opacity: canEdit ? 1 : 0.7 }}>
                     {/* Index cell - this is the row number */}
                     <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
                     
