@@ -302,7 +302,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
             // Construct the PDF extractor URL with the JWT token and backend parameter
             const backendUrl = 'https://gogain-backend.onrender.com';
-            const pdfExtractorUrl = `https://pdf-expense-tracker.vercel.app?token=${encodeURIComponent(authToken)}&backend=${encodeURIComponent(backendUrl)}`;
+            const pdfExtractorUrl = `https://pdf-expense-tracker.vercel.app/expense-tracker.html?token=${encodeURIComponent(authToken)}&backend=${encodeURIComponent(backendUrl)}`;
             
             console.log('Opening PDF extractor with token and backend:', {
                 hasToken: !!authToken,
