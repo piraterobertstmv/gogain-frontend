@@ -203,7 +203,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
         }
 
         if (key == "cost") {
-            return value + '€'
+            return formatNumber(value) + '€'
         }
 
         // Ensure we always return a string or number, never an object
