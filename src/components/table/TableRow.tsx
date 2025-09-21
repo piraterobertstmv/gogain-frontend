@@ -5,10 +5,8 @@ import { DatabaseForm } from "../popup/DatabaseForm";
 import React from 'react';
 
 function formatNumber(value: number): string {
-    if (value % 1 !== 0) {
-        return value.toFixed(2).replace('.', ',')  // European format: 2000,00
-    }
-    return value.toString()
+    // Always show 2 decimal places with European comma format
+    return value.toFixed(2).replace('.', ',')
 }
 
 export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetDataFunc, user, deleteFunction, deleteLines }: { column: string, data: any, dataRow: any , indexIn: number, deleteColumns: string[], resetDataFunc: any, user: any, deleteFunction: any, deleteLines: any }) {
