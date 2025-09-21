@@ -6,7 +6,6 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import { MultiFilterInput } from './MultipleFilterInput';
 import { BatchTransactionForm } from '../components/BatchTransactionForm';
-import { PdfTransactionImporter } from '../components/PdfTransactionImporter';
 import { Toast, ToastContainer } from "react-bootstrap";
 import './Transactions.css';
 import React from 'react';
@@ -277,7 +276,8 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     }
 
     const [showBatchModal, setShowBatchModal] = useState(false);
-    const [showPdfImporter, setShowPdfImporter] = useState(false);
+    const [pdfImportStatus, setPdfImportStatus] = useState<string | null>(null);
+    const [isPollingForImports, setIsPollingForImports] = useState(false);
 
 
     const handleCloseBatchForm = () => {
@@ -285,9 +285,88 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         reloadData();
     };
 
-    const handleClosePdfImporter = () => {
-        setShowPdfImporter(false);
-        reloadData();
+    // Handle PDF import by opening external PDF extractor with JWT token
+    const handlePdfImport = () => {
+        try {
+            // Get the JWT token from localStorage
+            const authToken = localStorage.getItem('authToken');
+            
+            if (!authToken) {
+                console.error('No auth token found');
+                alert('Authentication required. Please log in again.');
+                return;
+            }
+
+            // Store current transaction count for comparison
+            const currentTransactionCount = data?.transaction?.length || 0;
+
+            // Construct the PDF extractor URL with the JWT token and backend parameter
+            const backendUrl = 'https://gogain-backend.onrender.com';
+            const pdfExtractorUrl = `https://pdf-expense-tracker.vercel.app?token=${encodeURIComponent(authToken)}&backend=${encodeURIComponent(backendUrl)}`;
+            
+            console.log('Opening PDF extractor with token and backend:', {
+                hasToken: !!authToken,
+                tokenLength: authToken.length,
+                backendUrl: backendUrl,
+                url: pdfExtractorUrl,
+                currentTransactionCount
+            });
+
+            // Open in new tab
+            const newWindow = window.open(pdfExtractorUrl, '_blank');
+            
+            if (!newWindow) {
+                alert('Please allow pop-ups for this site to use the PDF import feature.');
+                return;
+            }
+
+            // Start polling for new transactions
+            setPdfImportStatus('PDF extractor opened. Waiting for import...');
+            setIsPollingForImports(true);
+            
+            // Poll for changes every 3 seconds for up to 5 minutes
+            let pollCount = 0;
+            const maxPolls = 100; // 5 minutes
+            
+            const pollForNewTransactions = setInterval(() => {
+                pollCount++;
+                
+                if (pollCount >= maxPolls) {
+                    clearInterval(pollForNewTransactions);
+                    setIsPollingForImports(false);
+                    setPdfImportStatus(null);
+                    console.log('Stopped polling for PDF imports (timeout)');
+                    return;
+                }
+
+                // Reload data and check for new transactions
+                reloadData();
+                
+                // Check if new transactions were added
+                const newTransactionCount = data?.transaction?.length || 0;
+                if (newTransactionCount > currentTransactionCount) {
+                    const importedCount = newTransactionCount - currentTransactionCount;
+                    clearInterval(pollForNewTransactions);
+                    setIsPollingForImports(false);
+                    setPdfImportStatus(`Successfully imported ${importedCount} transaction(s) from PDF!`);
+                    
+                    // Clear success message after 5 seconds
+                    setTimeout(() => {
+                        setPdfImportStatus(null);
+                    }, 5000);
+                    
+                    console.log(`Detected ${importedCount} new transactions from PDF import`);
+                }
+            }, 3000);
+
+            console.log('PDF extractor opened in new tab, polling started');
+            
+        } catch (error) {
+            console.error('Error opening PDF extractor:', error);
+            alert('Failed to open PDF extractor. Please try again.');
+            setIsPollingForImports(false);
+            setPdfImportStatus(null);
+        }
     };
 
     // Add an effect to log the first transaction when data loads
@@ -354,12 +433,12 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 Add Multiple Transactions
             </Button>
             <Button 
-                onClick={() => setShowPdfImporter(true)}
+                onClick={handlePdfImport}
                 style={{ 
                     marginLeft: '10px', 
-                    backgroundColor: "#F2F2F2", 
-                    border: "solid 0.5px #736A65", 
-                    color: "#706762" 
+                    backgroundColor: "#E8F5E8", 
+                    border: "solid 0.5px #4CAF50", 
+                    color: "#2E7D32" 
                 }}
             >
                 <i className="fas fa-file-pdf me-2"></i>
@@ -449,6 +528,34 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                     {notification.message}
                 </Toast.Body>
             </Toast>
+            
+            {/* PDF Import Status Toast */}
+            <Toast 
+                show={!!pdfImportStatus} 
+                onClose={() => setPdfImportStatus(null)} 
+                delay={isPollingForImports ? 0 : 5000} 
+                autohide={!isPollingForImports}
+                bg={pdfImportStatus?.includes('Successfully') ? 'success' : 'info'}
+            >
+                <Toast.Header>
+                    <strong className="me-auto">
+                        {isPollingForImports ? (
+                            <>
+                                <i className="fas fa-spinner fa-spin me-2"></i>
+                                PDF Import
+                            </>
+                        ) : (
+                            <>
+                                <i className="fas fa-check-circle me-2"></i>
+                                PDF Import Success
+                            </>
+                        )}
+                    </strong>
+                </Toast.Header>
+                <Toast.Body className={pdfImportStatus?.includes('Successfully') ? '' : 'text-white'}>
+                    {pdfImportStatus}
+                </Toast.Body>
+            </Toast>
         </ToastContainer>
 
         <Modal show={show} onHide={handleClose}>
@@ -467,15 +574,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 user={user}
             />
         </Modal>
-        
-        {/* PDF Transaction Importer with all required props explicitly defined */}
-        <PdfTransactionImporter 
-            show={showPdfImporter}
-            onHide={handleClosePdfImporter}
-            onSuccess={reloadData}
-            data={data}
-            user={user}
-        />
         
         <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
 
