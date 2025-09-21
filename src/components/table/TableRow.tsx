@@ -6,7 +6,7 @@ import React from 'react';
 
 function formatNumber(value: number): string {
     if (value % 1 !== 0) {
-        return value.toFixed(2)
+        return value.toFixed(2).replace('.', ',')  // European format: 2000,00
     }
     return value.toString()
 }

@@ -65,7 +65,7 @@ export function Reports({ data } : { data: any }) {
                     }
 
                     if (names[j] == "amount without taxes")
-                        value = (data[i]["cost"] / (1 + (data[i]["taxes"] / 100))).toFixed(2).toString()
+                        value = (data[i]["cost"] / (1 + (data[i]["taxes"] / 100))).toFixed(2).replace('.', ',').toString()
 
                     if (names[j] == "amount with taxes")
                         value = data[i]["cost"]
