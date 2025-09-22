@@ -264,7 +264,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                     )}
                     
                     {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                        if (!deleteColumns.includes(key) && index !== 0) {
+                        if (!deleteColumns.includes(key)) {
                             return (
                                 <React.Fragment key={`header-${index}`}>
                                     <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>

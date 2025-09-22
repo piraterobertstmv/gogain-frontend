@@ -37,7 +37,7 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
             "typeOfTransaction", 
             "typeOfMovement", 
             "frequency", 
-            "typeOfClient", 
+            "typeOfClient",
             "service"
         ];
 
