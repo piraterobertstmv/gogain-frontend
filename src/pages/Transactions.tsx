@@ -603,7 +603,18 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             />
         </Modal>
         
-        <Table column={subNavigation === 0 ? "transaction" : "costs"} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
+        <Table 
+            key={subNavigation === 0 ? "transactions" : "costs"} 
+            column={subNavigation === 0 ? "transaction" : "costs"} 
+            data={data} 
+            resetDataFunc={handleClose} 
+            user={user} 
+            filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} 
+            columnFilters={[]} 
+            deleteFunction={toggleLine} 
+            toggleAllLines={toggleAllLines} 
+            deleteLines={deleteLines}
+        />
 
         {/* Floating Scroll Buttons */}
         {showScrollUp && (

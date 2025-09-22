@@ -198,7 +198,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
             )}
             
             <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
-                <TableHead column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
+                <TableHead key={`${column}-head`} column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
                 <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
                     {rows.map((dataRow: any, index: number) => {
                         return (
