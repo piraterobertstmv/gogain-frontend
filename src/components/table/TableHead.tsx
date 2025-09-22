@@ -91,7 +91,7 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
         const orderedColumns = [
             "date", 
             "center", 
-            "client", 
+            "service", // cost categories (like MASSE SALARIALE, FRAIS BANQUE, etc.)
             "cost", // amount with taxes
             // amount without taxes is added dynamically after cost
             "worker", 
