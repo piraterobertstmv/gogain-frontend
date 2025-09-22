@@ -33,14 +33,13 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                 // Log headers for debugging
                 console.log('Using headers:', headers);
                 
-                const [transactions, clients, users, centers, services, costCategories, costTransactions] = await Promise.all([
+                const [transactions, clients, users, centers, services, costs] = await Promise.all([
                     fetch(`${apiUrl}transaction`, { headers }),
                     fetch(`${apiUrl}client`, { headers }),
                     fetch(`${apiUrl}users`, { headers }),
                     fetch(`${apiUrl}center`, { headers }),
                     fetch(`${apiUrl}service`, { headers }),
-                    fetch(`${apiUrl}costs`, { headers }),
-                    fetch(`${apiUrl}cost-transactions`, { headers })
+                    fetch(`${apiUrl}costs`, { headers })
                 ]);
 
                 // Log responses for debugging
@@ -54,8 +53,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     users.json(),
                     centers.json(),
                     services.json(),
-                    costCategories.json(),
-                    costTransactions.json()
+                    costs.json()
                 ]);
                 
                 // Log the results
@@ -65,8 +63,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     users: results[2].users?.length || 0,
                     centers: results[3].center?.length || 0,
                     services: results[4].service?.length || 0,
-                    costCategories: results[5].costs?.length || 0,
-                    costTransactions: results[6].costs?.length || 0
+                    costs: results[5].costs?.length || 0
                 });
                 
                 // Sort clients by first name
@@ -107,8 +104,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     users: results[2].users || [],
                     center: results[3].center || [],
                     service: results[4].service || [],
-                    costs: results[5].costs || [], // Cost categories (keep original)
-                    costTransactions: results[6].costs || [] // Cost transactions for the costs table
+                    costs: results[5].costs || []
                 });
             } catch (error) {
                 console.error('Error fetching data:', error);

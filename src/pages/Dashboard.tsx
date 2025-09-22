@@ -274,8 +274,15 @@ export function Dashboard({ data, user }: { data: any, user?: any }) {
     
     // For admins: show all centers and employees
     // For regular users: show only assigned centers and related employees
-    const allCenters = useMemo(() => data?.center?.map((item: { _id: string }) => item._id) || [], [data?.center]);
-    const allEmployees = useMemo(() => data?.users?.map((item: { _id: string }) => item._id) || [], [data?.users]);
+    const allCenters = useMemo(() => {
+        if (!data?.center || !Array.isArray(data.center)) return [];
+        return data.center.map((item: { _id: string }) => item._id);
+    }, [data?.center]);
+    
+    const allEmployees = useMemo(() => {
+        if (!data?.users || !Array.isArray(data.users)) return [];
+        return data.users.map((item: { _id: string }) => item._id);
+    }, [data?.users]);
     
     // Memoize filtered centers and employees to prevent infinite re-renders
     const centers = useMemo(() => {
@@ -283,9 +290,10 @@ export function Dashboard({ data, user }: { data: any, user?: any }) {
     }, [isAdmin, allCenters, userCenterIds]);
     
     const employes = useMemo(() => {
+        if (!data?.users || !Array.isArray(data.users)) return [];
         return isAdmin ? allEmployees : 
             allEmployees.filter((employeeId: string) => {
-                const employee = data?.users?.find((u: any) => u._id === employeeId);
+                const employee = data.users.find((u: any) => u._id === employeeId);
                 return employee?.centers?.some((centerIds: string) => userCenterIds.includes(centerIds));
             });
     }, [isAdmin, allEmployees, userCenterIds, data?.users]);
