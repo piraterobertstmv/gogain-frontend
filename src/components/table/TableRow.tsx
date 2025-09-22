@@ -145,6 +145,46 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
             return (serviceData && serviceData.name) ? serviceData.name : value;
         }
 
+        if (key == "typeOfMovement") {
+            // Map movement types to proper GoGain values for display
+            const movementMappings: Record<string, string> = {
+                'cash': 'cash',
+                'bank transfer': 'bank transfer',
+                'transfer': 'bank transfer',
+                'bank_transfer': 'bank transfer',
+                'wire': 'bank transfer',
+                'wire transfer': 'bank transfer',
+                'card': 'card',
+                'card payment': 'card',
+                'credit card': 'card',
+                'debit card': 'card',
+                'bank check': 'bank check',
+                'check': 'bank check',
+                'cheque': 'bank check',
+                'direct_debit': 'bank transfer',
+                'direct debit': 'bank transfer',
+                'electronic': 'bank transfer',
+                'other': 'card'
+            };
+            
+            const movementLower = (value || '').toString().toLowerCase().trim();
+            
+            // Try exact match first
+            if (movementMappings[movementLower]) {
+                return movementMappings[movementLower];
+            }
+            
+            // Try partial matches
+            for (const [key, mappedValue] of Object.entries(movementMappings)) {
+                if (movementLower.includes(key)) {
+                    return mappedValue;
+                }
+            }
+            
+            // Return original value if no mapping found
+            return value || 'card';
+        }
+
         if (key == "centers") {
             let res: string = ""
             if (value.length == 0 || value[0] == '')
