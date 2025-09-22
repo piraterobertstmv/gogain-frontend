@@ -15,7 +15,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
 
     // Effect to hide duplicate Index cells
     useEffect(() => {
-        if (rowRef.current && column === "transaction") {
+        if (rowRef.current && (column === "transaction" || column === "costs")) {
             // We know the 2nd column is the intended index column (row number)
             const cells = rowRef.current.querySelectorAll('td');
             
@@ -235,7 +235,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
     const backgroundColors: string[] = ["#fff", "#eee"]
 
     // For transaction tables, use the defined column order
-    if (column === "transaction") {
+    if (column === "transaction" || column === "costs") {
         return (
             <>
                 <tr onClick={handleShow} ref={rowRef}>
@@ -282,7 +282,7 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                                         })()}
                                     </td>
 
-                                    {column === "transaction" && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
+                                    {(column === "transaction" || column === "costs") && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
                                         <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} key={`amount-with-taxes-${index}`}>
                                             {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
                                         </td>

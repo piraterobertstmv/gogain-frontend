@@ -93,9 +93,15 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     }
 
     const [idButtons, setIdButtons] = useState(0);
+    const [subNavigation, setSubNavigation] = useState(0); // 0 = transactions, 1 = costs
 
     const buttonsName: string[] = [
         "transaction"
+    ];
+
+    const subNavigationNames: string[] = [
+        "Transactions",
+        "Costs"
     ];
 
     // Filter available options based on user permissions
@@ -453,6 +459,28 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             </button>
         </div>
 
+        {/* Sub-navigation for Transactions vs Costs */}
+        <div style={{ display: "flex", alignItems: "center", marginTop: "10px", marginBottom: "10px" }}>
+            {subNavigationNames.map((name, index) => (
+                <button
+                    key={index}
+                    onClick={() => setSubNavigation(index)}
+                    style={{
+                        padding: "8px 16px",
+                        marginRight: "10px",
+                        backgroundColor: subNavigation === index ? "#007bff" : "#f8f9fa",
+                        color: subNavigation === index ? "white" : "#495057",
+                        border: "1px solid #dee2e6",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "14px"
+                    }}
+                >
+                    {name}
+                </button>
+            ))}
+        </div>
+
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginTop: "1vh" }}>
             {/* Center filter: Only for admins */}
             {canFilter && (
@@ -560,9 +588,9 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
         <Modal show={show} onHide={handleClose}>
             <Modal.Header closeButton>
-                <Modal.Title>Add {buttonsName[idButtons]}</Modal.Title>
+                <Modal.Title>Add {subNavigation === 0 ? "Transaction" : "Cost"}</Modal.Title>
             </Modal.Header>
-            <DatabaseForm columnName={buttonsName[idButtons]} data={data} defaultValue={null} closePopupFunc={handleClose} user={user} />
+            <DatabaseForm columnName={subNavigation === 0 ? "transaction" : "costs"} data={data} defaultValue={null} closePopupFunc={handleClose} user={user} />
         </Modal>
         <Modal show={showBatchModal} onHide={handleCloseBatchForm} size="lg">
             <Modal.Header closeButton>
@@ -575,7 +603,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             />
         </Modal>
         
-        <Table column={buttonsName[idButtons]} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
+        <Table column={subNavigation === 0 ? "transaction" : "costs"} data={data} resetDataFunc={handleClose} user={user} filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} columnFilters={[]} deleteFunction={toggleLine} toggleAllLines={toggleAllLines} deleteLines={deleteLines}/>
 
         {/* Floating Scroll Buttons */}
         {showScrollUp && (
