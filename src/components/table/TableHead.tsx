@@ -91,7 +91,7 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
         const orderedColumns = [
             "date", 
             "center", 
-            "service", // cost categories (like MASSE SALARIALE, FRAIS BANQUE, etc.)
+            "client",
             "cost", // amount with taxes
             // amount without taxes is added dynamically after cost
             "worker", 
@@ -99,7 +99,8 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
             "typeOfTransaction", 
             "typeOfMovement", 
             "frequency", 
-            "typeOfClient"
+            "typeOfClient",
+            "service" // cost categories (like MASSE SALARIALE, FRAIS BANQUE, etc.)
         ];
 
         // Add 'index' to deleteColumns if it's not already there
