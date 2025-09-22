@@ -107,8 +107,8 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     users: results[2].users || [],
                     center: results[3].center || [],
                     service: results[4].service || [],
-                    costs: results[6].costs || [], // Cost transactions for the costs table
-                    costCategories: results[5].costs || [] // Cost categories for dropdowns
+                    costs: results[5].costs || [], // Cost categories (keep original)
+                    costTransactions: results[6].costs || [] // Cost transactions for the costs table
                 });
             } catch (error) {
                 console.error('Error fetching data:', error);

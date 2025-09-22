@@ -86,7 +86,7 @@ export function TableHead({ column, objKeys, deleteColumns, toggleAllLines }: { 
         );
     }
 
-    if (column === "costs") {
+    if (column === "costTransactions") {
         // Costs table - identical to transactions but shows cost categories instead of services
         const orderedColumns = [
             "date", 

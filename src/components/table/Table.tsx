@@ -81,7 +81,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     React.useEffect(() => {
         if (data[column]) {
             // For transactions, apply filters
-            if (column === "transaction" || column === "costs") {
+            if (column === "transaction" || column === "costTransactions") {
                 let filteredData = [...data[column]];
                 
                 // Apply filters if they exist
@@ -161,7 +161,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     return (
         <>
             {/* Active Filters Display */}
-            {(column === "transaction" || column === "costs") && hasActiveFilters && (
+            {(column === "transaction" || column === "costTransactions") && hasActiveFilters && (
                 <div style={{ 
                     marginBottom: '10px', 
                     padding: '8px 12px', 
@@ -192,7 +192,7 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
                         </span>
                     )}
                     <span style={{ marginLeft: '15px', color: '#6c757d' }}>
-                        Showing {rows.length} of {data[column]?.length || 0} {column === "costs" ? "costs" : "transactions"}
+                        Showing {rows.length} of {data[column]?.length || 0} {column === "costTransactions" ? "costs" : "transactions"}
                     </span>
                 </div>
             )}

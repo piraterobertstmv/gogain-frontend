@@ -590,7 +590,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             <Modal.Header closeButton>
                 <Modal.Title>Add {subNavigation === 0 ? "Transaction" : "Cost"}</Modal.Title>
             </Modal.Header>
-            <DatabaseForm columnName={subNavigation === 0 ? "transaction" : "costs"} data={data} defaultValue={null} closePopupFunc={handleClose} user={user} />
+            <DatabaseForm columnName={subNavigation === 0 ? "transaction" : "costTransactions"} data={data} defaultValue={null} closePopupFunc={handleClose} user={user} />
         </Modal>
         <Modal show={showBatchModal} onHide={handleCloseBatchForm} size="lg">
             <Modal.Header closeButton>
@@ -605,7 +605,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         
         <Table 
             key={subNavigation === 0 ? "transactions" : "costs"} 
-            column={subNavigation === 0 ? "transaction" : "costs"} 
+            column={subNavigation === 0 ? "transaction" : "costTransactions"} 
             data={data} 
             resetDataFunc={handleClose} 
             user={user} 

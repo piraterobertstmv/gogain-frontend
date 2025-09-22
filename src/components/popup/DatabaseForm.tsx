@@ -28,7 +28,7 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
     const [err, setErr]:any = useState({})
 
-    if ((columnName == "transaction" || columnName == "costs") && !('service' in dataToSendApi) && defaultValue != null) {
+    if ((columnName == "transaction" || columnName == "costTransactions") && !('service' in dataToSendApi) && defaultValue != null) {
         addOrModifyValueInBodyApi('service', defaultValue.service)
     }
 
