@@ -189,15 +189,17 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     };
 
     const toggleAllLines = () => {
-        const allTransactionIds = data.transaction.map((transaction: any) => transaction._id);
+        // Get the correct data source based on current sub-navigation
+        const currentData = subNavigation === 0 ? data.transaction : data.costTransactions;
+        const allIds = currentData.map((item: any) => item._id);
 
         setDeleteLines((prev) => {
-            const isAllPresent = allTransactionIds.every((id :any) => prev.includes(id));
+            const isAllPresent = allIds.every((id :any) => prev.includes(id));
 
             if (isAllPresent) {
                 return [];
             } else {
-                return [...new Set([...prev, ...allTransactionIds])];
+                return [...new Set([...prev, ...allIds])];
             }
         });
     };
@@ -206,9 +208,13 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     async function deleteSelectedTransaction(selectedId: string) {
         try {
-            console.log(`Deleting transaction ${selectedId} with URL: ${apiUrl}transaction/${selectedId}`);
+            // Determine the correct endpoint based on current sub-navigation
+            const endpoint = subNavigation === 0 ? 'transaction' : 'cost-transactions';
+            const itemType = subNavigation === 0 ? 'transaction' : 'cost transaction';
             
-            const response = await fetch(`${apiUrl}transaction/${selectedId}`, {
+            console.log(`Deleting ${itemType} ${selectedId} with URL: ${apiUrl}${endpoint}/${selectedId}`);
+            
+            const response = await fetch(`${apiUrl}${endpoint}/${selectedId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -221,31 +227,34 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 console.error('Delete failed:', errorData || response.statusText);
                 setNotification({
                     show: true,
-                    message: `Failed to delete transaction: ${errorData?.message || response.statusText}`,
+                    message: `Failed to delete ${itemType}: ${errorData?.message || response.statusText}`,
                     type: 'danger'
                 });
-                throw new Error(errorData?.message || 'Failed to delete transaction');
+                throw new Error(errorData?.message || `Failed to delete ${itemType}`);
             }
             
-            console.log(`Successfully deleted transaction ${selectedId}`);
+            console.log(`Successfully deleted ${itemType} ${selectedId}`);
             return true;
         } catch (error) {
-            console.error('Error deleting transaction:', error);
+            console.error(`Error deleting ${subNavigation === 0 ? 'transaction' : 'cost transaction'}:`, error);
             return false;
         }
     }
 
     async function deleteSelectedTransactions(selectedId: string[]) {
+        const itemType = subNavigation === 0 ? 'transaction' : 'cost';
+        const itemTypePlural = subNavigation === 0 ? 'transactions' : 'costs';
+        
         if (selectedId.length === 0) {
             setNotification({
                 show: true,
-                message: 'No transactions selected for deletion',
+                message: `No ${itemTypePlural} selected for deletion`,
                 type: 'danger'
             });
             return;
         }
         
-        const isConfirmed = window.confirm(`Are you sure you want to delete ${selectedId.length} transaction(s)?`);
+        const isConfirmed = window.confirm(`Are you sure you want to delete ${selectedId.length} ${itemType}(s)?`);
 
         if (isConfirmed) {
             setIsDeleting(true);
@@ -264,7 +273,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 // Show success notification
                 setNotification({
                     show: true,
-                    message: `Successfully deleted ${successCount} transaction(s)`,
+                    message: `Successfully deleted ${successCount} ${itemType}(s)`,
                     type: 'success'
                 });
                 // Reload data only once after all deletions
@@ -274,7 +283,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             if (successCount < selectedId.length) {
                 setNotification({
                     show: true,
-                    message: `Deleted ${successCount} of ${selectedId.length} selected transactions. Some transactions could not be deleted.`,
+                    message: `Deleted ${successCount} of ${selectedId.length} selected ${itemTypePlural}. Some ${itemTypePlural} could not be deleted.`,
                     type: 'danger'
                 });
             }
