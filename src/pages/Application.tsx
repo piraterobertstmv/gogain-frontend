@@ -66,7 +66,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     centers: results[3].center?.length || 0,
                     services: results[4].service?.length || 0,
                     costs: results[5].costs?.length || 0,
-                    costTransactions: results[6].costTransactions?.length || 0
+                    costTransactions: results[6].costs?.length || 0
                 });
                 
                 // Sort clients by first name
@@ -108,7 +108,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     center: results[3].center || [],
                     service: results[4].service || [],
                     costs: results[5].costs || [],
-                    costTransactions: results[6].costTransactions || []
+                    costTransactions: results[6].costs || []
                 });
             } catch (error) {
                 console.error('Error fetching data:', error);
