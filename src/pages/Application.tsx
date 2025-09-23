@@ -7,7 +7,7 @@ import { Transactions } from './Transactions';
 import { Reports } from './Reports';
 import { Settings } from './Settings';
 
-export function Application({ user }: { user: any }) {
+export function Application({ user, setUser }: { user: any, setUser: any }) {
     const [data, setData] = useState<any>({});
     const [reload, setReload] = useState(0);
     
@@ -300,5 +300,4 @@ export function Application({ user }: { user: any }) {
             </div>
         </div>
     );
-}
 }
