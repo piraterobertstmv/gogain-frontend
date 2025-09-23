@@ -3,6 +3,7 @@ import { LeftButtonsRadio } from "../components/LeftButtonsRadio"
 import { Header } from "../components/Header"
 
 import { Dashboard } from "./Dashboard";
+import { CashFlow } from "./CashFlow";
 import { Setup } from "./Setup";
 import { Transactions } from "./Transactions";
 import { Reports } from "./Reports";
@@ -127,10 +128,10 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
     const canAccessDashboard = isAdmin || (userHasCenters && userPercentage >= 50);
     const canAccessSetup = isAdmin || (userHasCenters && userPercentage >= 50);
     
-    const allNavigation = ["Dashboard", "Set up", "Transactions", "Reports", "Settings"];
+    const allNavigation = ["Dashboard", "Cash Flow", "Set up", "Transactions", "Reports", "Settings"];
     const regularUserNavigation = canAccessSetup ? 
-        (canAccessDashboard ? ["Dashboard", "Set up", "Transactions", "Settings"] : ["Set up", "Transactions", "Settings"]) :
-        (canAccessDashboard ? ["Dashboard", "Transactions", "Settings"] : ["Transactions", "Settings"]);
+        (canAccessDashboard ? ["Dashboard", "Cash Flow", "Set up", "Transactions", "Settings"] : ["Set up", "Transactions", "Settings"]) :
+        (canAccessDashboard ? ["Dashboard", "Cash Flow", "Transactions", "Settings"] : ["Transactions", "Settings"]);
     
     const navigationItems = isAdmin ? allNavigation : regularUserNavigation;
     
@@ -139,32 +140,34 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
     if (isAdmin) {
         adjustedIdButtonsLeft = idButtonsLeft;
     } else if (canAccessDashboard && canAccessSetup) {
-        // Regular user with dashboard and setup: [Dashboard=0, Setup=1, Transactions=2, Settings=3]
-        // Map from admin indices: Dashboard=0->0, Setup=1->1, Transactions=2->2, Settings=4->3
+        // Regular user with dashboard and setup: [Dashboard=0, Cash Flow=1, Setup=2, Transactions=3, Settings=4]
+        // Map from admin indices: Dashboard=0->0, Cash Flow=1->1, Setup=2->2, Transactions=3->3, Settings=5->4
         if (idButtonsLeft === 0) adjustedIdButtonsLeft = 0; // Dashboard
-        else if (idButtonsLeft === 1) adjustedIdButtonsLeft = 1; // Setup
-        else if (idButtonsLeft === 2) adjustedIdButtonsLeft = 2; // Transactions
-        else if (idButtonsLeft === 4) adjustedIdButtonsLeft = 3; // Settings
-        else adjustedIdButtonsLeft = 2; // Default to Transactions
+        else if (idButtonsLeft === 1) adjustedIdButtonsLeft = 1; // Cash Flow
+        else if (idButtonsLeft === 2) adjustedIdButtonsLeft = 2; // Setup
+        else if (idButtonsLeft === 3) adjustedIdButtonsLeft = 3; // Transactions
+        else if (idButtonsLeft === 5) adjustedIdButtonsLeft = 4; // Settings
+        else adjustedIdButtonsLeft = 3; // Default to Transactions
     } else if (canAccessSetup && !canAccessDashboard) {
         // Regular user with setup but no dashboard: [Setup=0, Transactions=1, Settings=2]
-        // Map from admin indices: Setup=1->0, Transactions=2->1, Settings=4->2
-        if (idButtonsLeft === 1) adjustedIdButtonsLeft = 0; // Setup
-        else if (idButtonsLeft === 2) adjustedIdButtonsLeft = 1; // Transactions
-        else if (idButtonsLeft === 4) adjustedIdButtonsLeft = 2; // Settings
+        // Map from admin indices: Setup=2->0, Transactions=3->1, Settings=5->2
+        if (idButtonsLeft === 2) adjustedIdButtonsLeft = 0; // Setup
+        else if (idButtonsLeft === 3) adjustedIdButtonsLeft = 1; // Transactions
+        else if (idButtonsLeft === 5) adjustedIdButtonsLeft = 2; // Settings
         else adjustedIdButtonsLeft = 1; // Default to Transactions
     } else if (canAccessDashboard && !canAccessSetup) {
-        // Regular user with dashboard but no setup: [Dashboard=0, Transactions=1, Settings=2]
-        // Map from admin indices: Dashboard=0->0, Transactions=2->1, Settings=4->2
+        // Regular user with dashboard but no setup: [Dashboard=0, Cash Flow=1, Transactions=2, Settings=3]
+        // Map from admin indices: Dashboard=0->0, Cash Flow=1->1, Transactions=3->2, Settings=5->3
         if (idButtonsLeft === 0) adjustedIdButtonsLeft = 0; // Dashboard
-        else if (idButtonsLeft === 2) adjustedIdButtonsLeft = 1; // Transactions
-        else if (idButtonsLeft === 4) adjustedIdButtonsLeft = 2; // Settings
-        else adjustedIdButtonsLeft = 1; // Default to Transactions
+        else if (idButtonsLeft === 1) adjustedIdButtonsLeft = 1; // Cash Flow
+        else if (idButtonsLeft === 3) adjustedIdButtonsLeft = 2; // Transactions
+        else if (idButtonsLeft === 5) adjustedIdButtonsLeft = 3; // Settings
+        else adjustedIdButtonsLeft = 2; // Default to Transactions
     } else {
         // Regular user without dashboard or setup: [Transactions=0, Settings=1]
-        // Map from admin indices: Transactions=2->0, Settings=4->1
-        if (idButtonsLeft === 2) adjustedIdButtonsLeft = 0; // Transactions
-        else if (idButtonsLeft === 4) adjustedIdButtonsLeft = 1; // Settings
+        // Map from admin indices: Transactions=3->0, Settings=5->1
+        if (idButtonsLeft === 3) adjustedIdButtonsLeft = 0; // Transactions
+        else if (idButtonsLeft === 5) adjustedIdButtonsLeft = 1; // Settings
         else adjustedIdButtonsLeft = 0; // Default to Transactions
     }
 
@@ -173,29 +176,31 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
         if (isAdmin) {
             setIdButtonsLeft(filteredIndex);
         } else if (canAccessDashboard && canAccessSetup) {
-            // Regular user with dashboard and setup: [Dashboard=0, Setup=1, Transactions=2, Settings=3]
-            // Map to admin indices: Dashboard=0->0, Setup=1->1, Transactions=2->2, Settings=3->4
+            // Regular user with dashboard and setup: [Dashboard=0, Cash Flow=1, Setup=2, Transactions=3, Settings=4]
+            // Map to admin indices: Dashboard=0->0, Cash Flow=1->1, Setup=2->2, Transactions=3->3, Settings=4->5
             if (filteredIndex === 0) setIdButtonsLeft(0); // Dashboard
-            else if (filteredIndex === 1) setIdButtonsLeft(1); // Setup
-            else if (filteredIndex === 2) setIdButtonsLeft(2); // Transactions
-            else if (filteredIndex === 3) setIdButtonsLeft(4); // Settings
+            else if (filteredIndex === 1) setIdButtonsLeft(1); // Cash Flow
+            else if (filteredIndex === 2) setIdButtonsLeft(2); // Setup
+            else if (filteredIndex === 3) setIdButtonsLeft(3); // Transactions
+            else if (filteredIndex === 4) setIdButtonsLeft(5); // Settings
         } else if (canAccessSetup && !canAccessDashboard) {
             // Regular user with setup but no dashboard: [Setup=0, Transactions=1, Settings=2]
-            // Map to admin indices: Setup=0->1, Transactions=1->2, Settings=2->4
-            if (filteredIndex === 0) setIdButtonsLeft(1); // Setup
-            else if (filteredIndex === 1) setIdButtonsLeft(2); // Transactions
-            else if (filteredIndex === 2) setIdButtonsLeft(4); // Settings
+            // Map to admin indices: Setup=0->2, Transactions=1->3, Settings=2->5
+            if (filteredIndex === 0) setIdButtonsLeft(2); // Setup
+            else if (filteredIndex === 1) setIdButtonsLeft(3); // Transactions
+            else if (filteredIndex === 2) setIdButtonsLeft(5); // Settings
         } else if (canAccessDashboard && !canAccessSetup) {
-            // Regular user with dashboard but no setup: [Dashboard=0, Transactions=1, Settings=2]
-            // Map to admin indices: Dashboard=0->0, Transactions=1->2, Settings=2->4
+            // Regular user with dashboard but no setup: [Dashboard=0, Cash Flow=1, Transactions=2, Settings=3]
+            // Map to admin indices: Dashboard=0->0, Cash Flow=1->1, Transactions=2->3, Settings=3->5
             if (filteredIndex === 0) setIdButtonsLeft(0); // Dashboard
-            else if (filteredIndex === 1) setIdButtonsLeft(2); // Transactions
-            else if (filteredIndex === 2) setIdButtonsLeft(4); // Settings
+            else if (filteredIndex === 1) setIdButtonsLeft(1); // Cash Flow
+            else if (filteredIndex === 2) setIdButtonsLeft(3); // Transactions
+            else if (filteredIndex === 3) setIdButtonsLeft(5); // Settings
         } else {
             // Regular user without dashboard or setup: [Transactions=0, Settings=1]
-            // Map to admin indices: Transactions=0->2, Settings=1->4
-            if (filteredIndex === 0) setIdButtonsLeft(2); // Transactions
-            else if (filteredIndex === 1) setIdButtonsLeft(4); // Settings
+            // Map to admin indices: Transactions=0->3, Settings=1->5
+            if (filteredIndex === 0) setIdButtonsLeft(3); // Transactions
+            else if (filteredIndex === 1) setIdButtonsLeft(5); // Settings
         }
     };
 
@@ -217,15 +222,18 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                             <Dashboard data={data} user={user} />
                         )}
                         {(idButtonsLeft == 1) && (
+                            <CashFlow data={data} user={user} />
+                        )}
+                        {(idButtonsLeft == 2) && (
                             <Setup data={data} reloadData={handleReload} user={user} />
                         )}
-                        {idButtonsLeft == 2 && (
+                        {idButtonsLeft == 3 && (
                             <Transactions data={data} reloadData={handleReload} user={user} />
                         )}
-                        {(idButtonsLeft == 3) && (
+                        {(idButtonsLeft == 4) && (
                             <Reports data={data}/>
                         )}
-                        {(idButtonsLeft == 4) && (
+                        {(idButtonsLeft == 5) && (
                             <Settings user={user}/>
                         )}
                     </>
@@ -238,20 +246,24 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                         {adjustedIdButtonsLeft == 0 && canAccessDashboard && (
                             <Dashboard data={data} user={user} />
                         )}
+                        {/* Cash Flow for qualified regular users (centers assigned + ≥50% permission) */}
+                        {adjustedIdButtonsLeft == 1 && canAccessDashboard && (
+                            <CashFlow data={data} user={user} />
+                        )}
                         {/* Setup for qualified regular users (centers assigned + ≥50% permission) */}
-                        {((adjustedIdButtonsLeft == 1 && canAccessDashboard && canAccessSetup) || (adjustedIdButtonsLeft == 0 && !canAccessDashboard && canAccessSetup)) && (
+                        {((adjustedIdButtonsLeft == 2 && canAccessDashboard && canAccessSetup) || (adjustedIdButtonsLeft == 0 && !canAccessDashboard && canAccessSetup)) && (
                             <Setup data={data} reloadData={handleReload} user={user} />
                         )}
                         {/* Transactions */}
-                        {((adjustedIdButtonsLeft == 2 && canAccessDashboard && canAccessSetup) || 
-                          (adjustedIdButtonsLeft == 1 && canAccessDashboard && !canAccessSetup) ||
+                        {((adjustedIdButtonsLeft == 3 && canAccessDashboard && canAccessSetup) || 
+                          (adjustedIdButtonsLeft == 2 && canAccessDashboard && !canAccessSetup) ||
                           (adjustedIdButtonsLeft == 1 && !canAccessDashboard && canAccessSetup) ||
                           (adjustedIdButtonsLeft == 0 && !canAccessDashboard && !canAccessSetup)) && (
                             <Transactions data={data} reloadData={handleReload} user={user} />
                         )}
                         {/* Settings */}
-                        {((adjustedIdButtonsLeft == 3 && canAccessDashboard && canAccessSetup) ||
-                          (adjustedIdButtonsLeft == 2 && canAccessDashboard && !canAccessSetup) ||
+                        {((adjustedIdButtonsLeft == 4 && canAccessDashboard && canAccessSetup) ||
+                          (adjustedIdButtonsLeft == 3 && canAccessDashboard && !canAccessSetup) ||
                           (adjustedIdButtonsLeft == 2 && !canAccessDashboard && canAccessSetup) ||
                           (adjustedIdButtonsLeft == 1 && !canAccessDashboard && !canAccessSetup)) && (
                             <Settings user={user}/>
