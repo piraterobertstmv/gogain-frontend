@@ -1,21 +1,19 @@
-import { useEffect, useState } from 'react'
-import { LeftButtonsRadio } from "../components/LeftButtonsRadio"
-import { Header } from "../components/Header"
+import { useEffect, useState, useMemo } from 'react';
+import { Header } from '../components/Header';
+import { Dashboard } from './Dashboard';
+import { CashFlow } from './CashFlow';
+import { Setup } from './Setup';
+import { Transactions } from './Transactions';
+import { Reports } from './Reports';
+import { Settings } from './Settings';
 
-import { Dashboard } from "./Dashboard";
-import { CashFlow } from "./CashFlow";
-import { Setup } from "./Setup";
-import { Transactions } from "./Transactions";
-import { Reports } from "./Reports";
-import { Settings } from "./Settings";
-
-import "./Application.css"
-
-export function Application({user, setUser} : {user: any, setUser: any}) {
-    const [reload, setReload] = useState(false)
-    const handleReload = () => setReload(prev => !prev)
-
-    const [data, setData] = useState<any>({})
+export function Application({ user }: { user: any }) {
+    const [data, setData] = useState<any>({});
+    const [reload, setReload] = useState(0);
+    
+    const handleReload = () => {
+        setReload(prev => prev + 1);
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -85,6 +83,15 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     return dateA.getTime() - dateB.getTime();
                 }) : [];
                 
+                // Sort cost transactions by date (oldest to newest)
+                const sortedCostTransactions = results[6].costs ? [...results[6].costs].sort((a, b) => {
+                    // Parse dates - handle both string dates and Date objects
+                    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+                    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+                    // Sort ascending (oldest first)
+                    return dateA.getTime() - dateB.getTime();
+                }) : [];
+
                 // Filter data based on user permissions
                 const isUserAdmin = user?.isAdmin === true;
                 const userCenterIds = user?.centers || [];
@@ -94,12 +101,20 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     sortedTransactions.filter(transaction => 
                         userCenterIds.includes(transaction.center)
                     );
+
+                // Filter cost transactions for regular users (only show cost transactions from assigned centers)
+                const filteredCostTransactions = isUserAdmin ? sortedCostTransactions : 
+                    sortedCostTransactions.filter(costTransaction => 
+                        userCenterIds.includes(costTransaction.center)
+                    );
                 
                 console.log('User permissions:', { 
                     isAdmin: isUserAdmin, 
                     assignedCenters: userCenterIds,
                     totalTransactions: sortedTransactions.length,
-                    filteredTransactions: filteredTransactions.length 
+                    filteredTransactions: filteredTransactions.length,
+                    totalCostTransactions: sortedCostTransactions.length,
+                    filteredCostTransactions: filteredCostTransactions.length 
                 });
 
                 setData({
@@ -109,7 +124,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                     center: results[3].center || [],
                     service: results[4].service || [],
                     costs: results[5].costs || [],
-                    costTransactions: results[6].costs || []
+                    costTransactions: filteredCostTransactions
                 });
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -126,7 +141,7 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
     const userPercentage = parseFloat(user?.percentage) || 0;
     const userHasCenters = user?.centers && user.centers.length > 0;
     const canAccessDashboard = isAdmin || (userHasCenters && userPercentage >= 50);
-    const canAccessSetup = isAdmin || (userHasCenters && userPercentage >= 50);
+    const canAccessSetup = true; // All users can access Setup (to create clients, centers, services, costs)
     
     const allNavigation = ["Dashboard", "Cash Flow", "Set up", "Transactions", "Reports", "Settings"];
     const regularUserNavigation = canAccessSetup ? 
@@ -200,22 +215,35 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
         }
     };
 
+    // All centers and employees for filtering
+    const allCenters = useMemo(() => {
+        if (!data?.center || !Array.isArray(data.center)) return [];
+        return data.center;
+    }, [data.center]);
 
+    const allEmployees = useMemo(() => {
+        if (!data?.users || !Array.isArray(data.users)) return [];
+        return data.users;
+    }, [data.users]);
 
-    return <>
-        <div className="bottom-bar-container">
-            <Header user={user} />
-        </div>
-        <div className='d-flex flex-row' style={{ backgroundColor: "#FBFBFB", fontFamily: 'Inter, sans-serif' }}>
-            <div style={{ width: "max-content" }}>
-                <LeftButtonsRadio buttonsName={navigationItems} idButtonsName={adjustedIdButtonsLeft} setIdButtonsLeft={handleNavigationClick} setUser={setUser}/>
-            </div>
-            <div>
-                {/* Admin users: full navigation */}
+    const employes = useMemo(() => {
+        if (!data?.users || !Array.isArray(data.users)) return [];
+        return data.users.filter((user: any) => !user.isAdmin);
+    }, [data.users]);
+
+    return (
+        <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+            <Header 
+                user={user} 
+                buttonsName={navigationItems} 
+                onChangeFunction={handleNavigationClick} 
+                selectedButton={adjustedIdButtonsLeft} 
+            />
+            <div style={{ flex: 1, overflow: "hidden" }}>
                 {isAdmin && (
                     <>
                         {(idButtonsLeft == 0) && (
-                            <Dashboard data={data} user={user} />
+                            <Dashboard data={data} />
                         )}
                         {(idButtonsLeft == 1) && (
                             <CashFlow data={data} user={user} />
@@ -227,42 +255,50 @@ export function Application({user, setUser} : {user: any, setUser: any}) {
                             <Transactions data={data} reloadData={handleReload} user={user} />
                         )}
                         {(idButtonsLeft == 4) && (
-                            <Reports data={data}/>
+                            <Reports data={data} user={user} />
                         )}
                         {(idButtonsLeft == 5) && (
                             <Settings user={user}/>
                         )}
                     </>
                 )}
-                
-                {/* Regular users: limited navigation */}
                 {!isAdmin && (
                     <>
-                        {/* Dashboard for qualified regular users (centers assigned + ≥50% permission) */}
-                        {adjustedIdButtonsLeft == 0 && canAccessDashboard && (
-                            <Dashboard data={data} user={user} />
+                        {(adjustedIdButtonsLeft == 0 && canAccessDashboard) && (
+                            <Dashboard data={data} />
                         )}
-                        {/* Setup for qualified regular users (centers assigned + ≥50% permission) */}
-                        {((adjustedIdButtonsLeft == 1 && canAccessDashboard && canAccessSetup) || (adjustedIdButtonsLeft == 0 && !canAccessDashboard && canAccessSetup)) && (
+                        {(adjustedIdButtonsLeft == 0 && !canAccessDashboard && canAccessSetup) && (
                             <Setup data={data} reloadData={handleReload} user={user} />
                         )}
-                        {/* Transactions */}
-                        {((adjustedIdButtonsLeft == 2 && canAccessDashboard && canAccessSetup) || 
-                          (adjustedIdButtonsLeft == 1 && canAccessDashboard && !canAccessSetup) ||
-                          (adjustedIdButtonsLeft == 1 && !canAccessDashboard && canAccessSetup) ||
-                          (adjustedIdButtonsLeft == 0 && !canAccessDashboard && !canAccessSetup)) && (
+                        {(adjustedIdButtonsLeft == 0 && !canAccessDashboard && !canAccessSetup) && (
                             <Transactions data={data} reloadData={handleReload} user={user} />
                         )}
-                        {/* Settings */}
-                        {((adjustedIdButtonsLeft == 3 && canAccessDashboard && canAccessSetup) ||
-                          (adjustedIdButtonsLeft == 2 && canAccessDashboard && !canAccessSetup) ||
-                          (adjustedIdButtonsLeft == 2 && !canAccessDashboard && canAccessSetup) ||
-                          (adjustedIdButtonsLeft == 1 && !canAccessDashboard && !canAccessSetup)) && (
+                        {(adjustedIdButtonsLeft == 1 && canAccessDashboard && canAccessSetup) && (
+                            <Setup data={data} reloadData={handleReload} user={user} />
+                        )}
+                        {(adjustedIdButtonsLeft == 1 && canAccessDashboard && !canAccessSetup) && (
+                            <Transactions data={data} reloadData={handleReload} user={user} />
+                        )}
+                        {(adjustedIdButtonsLeft == 1 && !canAccessDashboard && canAccessSetup) && (
+                            <Transactions data={data} reloadData={handleReload} user={user} />
+                        )}
+                        {(adjustedIdButtonsLeft == 1 && !canAccessDashboard && !canAccessSetup) && (
+                            <Settings user={user}/>
+                        )}
+                        {(adjustedIdButtonsLeft == 2) && (
+                            canAccessDashboard ? (
+                                <Transactions data={data} reloadData={handleReload} user={user} />
+                            ) : (
+                                <Settings user={user}/>
+                            )
+                        )}
+                        {(adjustedIdButtonsLeft == 3) && (
                             <Settings user={user}/>
                         )}
                     </>
                 )}
             </div>
         </div>
-    </>
+    );
+}
 }
