@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Header } from '../components/Header';
+import { LeftButtonsRadio } from '../components/LeftButtonsRadio';
 import { Dashboard } from './Dashboard';
 import { CashFlow } from './CashFlow';
 import { Setup } from './Setup';
@@ -215,31 +216,20 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
         }
     };
 
-    // All centers and employees for filtering
-    const allCenters = useMemo(() => {
-        if (!data?.center || !Array.isArray(data.center)) return [];
-        return data.center;
-    }, [data.center]);
-
-    const allEmployees = useMemo(() => {
-        if (!data?.users || !Array.isArray(data.users)) return [];
-        return data.users;
-    }, [data.users]);
-
-    const employes = useMemo(() => {
-        if (!data?.users || !Array.isArray(data.users)) return [];
-        return data.users.filter((user: any) => !user.isAdmin);
-    }, [data.users]);
 
     return (
         <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
             <Header 
                 user={user} 
-                buttonsName={navigationItems} 
-                onChangeFunction={handleNavigationClick} 
-                selectedButton={adjustedIdButtonsLeft} 
             />
-            <div style={{ flex: 1, overflow: "hidden" }}>
+            <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+                <LeftButtonsRadio 
+                    buttonsName={navigationItems}
+                    idButtonsName={adjustedIdButtonsLeft}
+                    setIdButtonsLeft={handleNavigationClick}
+                    setUser={setUser}
+                />
+                <div style={{ flex: 1, overflow: "auto" }}>
                 {isAdmin && (
                     <>
                         {(idButtonsLeft == 0) && (
@@ -255,7 +245,7 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                             <Transactions data={data} reloadData={handleReload} user={user} />
                         )}
                         {(idButtonsLeft == 4) && (
-                            <Reports data={data} user={user} />
+                            <Reports data={data} />
                         )}
                         {(idButtonsLeft == 5) && (
                             <Settings user={user}/>
@@ -297,6 +287,7 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                         )}
                     </>
                 )}
+                </div>
             </div>
         </div>
     );
