@@ -106,6 +106,9 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
     // Filter available options based on user permissions
     const isAdmin = user?.isAdmin === true;
+    
+    // Filter sub-navigation based on user permissions - only admins can see Costs
+    const filteredSubNavigationNames = isAdmin ? subNavigationNames : ["Transactions"];
     const userPercentage = parseFloat(user?.percentage) || 0;
     const userCenterIds = user?.centers || [];
     const userServiceIds = user?.services || [];
@@ -318,6 +321,13 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             setSelectedCenterId(availableCenters[0]._id);
         }
     }, [data?.center, user?.centers, selectedCenterId]);
+    
+    // Prevent regular users from accessing costs tab
+    React.useEffect(() => {
+        if (!isAdmin && subNavigation === 1) {
+            setSubNavigation(0); // Force back to transactions tab
+        }
+    }, [isAdmin, subNavigation]);
 
 
     const handleCloseBatchForm = () => {
@@ -497,47 +507,52 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 Add Multiple Transactions
             </Button>
             
-            {/* Center Selection for PDF Import - Only show for multi-center users */}
-            {getUserAvailableCenters().length > 1 && (
-                <div style={{ display: 'inline-block', marginLeft: '10px' }}>
-                    <Form.Select 
-                        value={selectedCenterId}
-                        onChange={(e) => setSelectedCenterId(e.target.value)}
+            {/* PDF Import - Only show for admin users */}
+            {isAdmin && (
+                <>
+                    {/* Center Selection for PDF Import - Only show for multi-center users */}
+                    {getUserAvailableCenters().length > 1 && (
+                        <div style={{ display: 'inline-block', marginLeft: '10px' }}>
+                            <Form.Select 
+                                value={selectedCenterId}
+                                onChange={(e) => setSelectedCenterId(e.target.value)}
+                                style={{ 
+                                    width: '200px', 
+                                    height: '38px',
+                                    border: "solid 1px #4CAF50",
+                                    borderRadius: '4px',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                <option value="">Select Center for PDF Import</option>
+                                {getUserAvailableCenters().map((center: any) => (
+                                    <option key={center._id} value={center._id}>
+                                        {center.name}
+                                    </option>
+                                ))}
+                            </Form.Select>
+                        </div>
+                    )}
+                    
+                    <Button 
+                        onClick={handlePdfImport}
                         style={{ 
-                            width: '200px', 
-                            height: '38px',
-                            border: "solid 1px #4CAF50",
-                            borderRadius: '4px',
-                            fontSize: '14px'
+                            marginLeft: '10px', 
+                            backgroundColor: "#E8F5E8", 
+                            border: "solid 0.5px #4CAF50", 
+                            color: "#2E7D32" 
                         }}
                     >
-                        <option value="">Select Center for PDF Import</option>
-                        {getUserAvailableCenters().map((center: any) => (
-                            <option key={center._id} value={center._id}>
-                                {center.name}
-                            </option>
-                        ))}
-                    </Form.Select>
-                </div>
+                        <i className="fas fa-file-pdf me-2"></i>
+                        Import from PDF
+                        {getUserAvailableCenters().length === 1 && (
+                            <span style={{ fontSize: '12px', marginLeft: '5px' }}>
+                                ({getUserAvailableCenters()[0]?.name})
+                            </span>
+                        )}
+                    </Button>
+                </>
             )}
-            
-            <Button 
-                onClick={handlePdfImport}
-                style={{ 
-                    marginLeft: '10px', 
-                    backgroundColor: "#E8F5E8", 
-                    border: "solid 0.5px #4CAF50", 
-                    color: "#2E7D32" 
-                }}
-            >
-                <i className="fas fa-file-pdf me-2"></i>
-                Import from PDF
-                {getUserAvailableCenters().length === 1 && (
-                    <span style={{ fontSize: '12px', marginLeft: '5px' }}>
-                        ({getUserAvailableCenters()[0]?.name})
-                    </span>
-                )}
-            </Button>
             <button 
                 className={deleteLines.length === 0 ? "logout-button-grey" : "logout-button"} 
                 onClick={() => deleteSelectedTransactions(deleteLines)}
@@ -549,7 +564,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
         {/* Sub-navigation for Transactions vs Costs */}
         <div style={{ display: "flex", alignItems: "center", marginTop: "10px", marginBottom: "10px" }}>
-            {subNavigationNames.map((name, index) => (
+            {filteredSubNavigationNames.map((name, index) => (
                 <button
                     key={index}
                     onClick={() => setSubNavigation(index)}
