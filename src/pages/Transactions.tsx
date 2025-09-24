@@ -6,7 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import { MultiFilterInput } from './MultipleFilterInput';
 import { BatchTransactionForm } from '../components/BatchTransactionForm';
-import { Toast, ToastContainer } from "react-bootstrap";
+import { Toast, ToastContainer, Form } from "react-bootstrap";
 import './Transactions.css';
 import React from 'react';
 import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
@@ -293,6 +293,31 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [pdfImportStatus, setPdfImportStatus] = useState<string | null>(null);
     const [isPollingForImports, setIsPollingForImports] = useState(false);
+    
+    // Center selection for PDF import
+    const [selectedCenterId, setSelectedCenterId] = useState<string>('');
+    
+    // Helper function to get available centers for the current user
+    const getUserAvailableCenters = () => {
+        if (!data?.center || !Array.isArray(data.center)) return [];
+        
+        if (user?.isAdmin) {
+            return data.center;
+        } else {
+            // Filter centers based on user's assigned centers
+            return data.center.filter((center: any) => 
+                user?.centers?.includes(center._id)
+            );
+        }
+    };
+    
+    // Auto-select center if user has only one center available
+    React.useEffect(() => {
+        const availableCenters = getUserAvailableCenters();
+        if (availableCenters.length === 1 && !selectedCenterId) {
+            setSelectedCenterId(availableCenters[0]._id);
+        }
+    }, [data?.center, user?.centers, selectedCenterId]);
 
 
     const handleCloseBatchForm = () => {
@@ -312,17 +337,41 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 return;
             }
 
+            // Get available centers and validate selection
+            const availableCenters = getUserAvailableCenters();
+            let centerToUse = selectedCenterId;
+            
+            // Auto-select if only one center available
+            if (!centerToUse && availableCenters.length === 1) {
+                centerToUse = availableCenters[0]._id;
+                setSelectedCenterId(centerToUse);
+            }
+            
+            // Require center selection for multi-center users
+            if (!centerToUse && availableCenters.length > 1) {
+                alert('Please select a center before importing PDF transactions.');
+                return;
+            }
+            
+            // If no centers available, show error
+            if (!centerToUse) {
+                alert('No centers available for PDF import. Please contact your administrator.');
+                return;
+            }
+
             // Store current transaction count for comparison
             const currentTransactionCount = data?.transaction?.length || 0;
 
-            // Construct the PDF extractor URL with the JWT token and backend parameter
+            // Construct the PDF extractor URL with center selection
             const backendUrl = 'https://gogain-backend.onrender.com';
-            const pdfExtractorUrl = `https://pdf-expense-tracker.vercel.app/expense-tracker.html?token=${encodeURIComponent(authToken)}&backend=${encodeURIComponent(backendUrl)}`;
+            const pdfExtractorUrl = `https://pdf-expense-tracker.vercel.app/expense-tracker.html?token=${encodeURIComponent(authToken)}&backend=${encodeURIComponent(backendUrl)}&center=${encodeURIComponent(centerToUse)}`;
             
-            console.log('Opening PDF extractor with token and backend:', {
+            console.log('Opening PDF extractor with center selection:', {
                 hasToken: !!authToken,
                 tokenLength: authToken.length,
                 backendUrl: backendUrl,
+                selectedCenter: centerToUse,
+                availableCentersCount: availableCenters.length,
                 url: pdfExtractorUrl,
                 currentTransactionCount
             });
@@ -447,6 +496,31 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             >
                 Add Multiple Transactions
             </Button>
+            
+            {/* Center Selection for PDF Import - Only show for multi-center users */}
+            {getUserAvailableCenters().length > 1 && (
+                <div style={{ display: 'inline-block', marginLeft: '10px' }}>
+                    <Form.Select 
+                        value={selectedCenterId}
+                        onChange={(e) => setSelectedCenterId(e.target.value)}
+                        style={{ 
+                            width: '200px', 
+                            height: '38px',
+                            border: "solid 1px #4CAF50",
+                            borderRadius: '4px',
+                            fontSize: '14px'
+                        }}
+                    >
+                        <option value="">Select Center for PDF Import</option>
+                        {getUserAvailableCenters().map((center: any) => (
+                            <option key={center._id} value={center._id}>
+                                {center.name}
+                            </option>
+                        ))}
+                    </Form.Select>
+                </div>
+            )}
+            
             <Button 
                 onClick={handlePdfImport}
                 style={{ 
@@ -458,6 +532,11 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             >
                 <i className="fas fa-file-pdf me-2"></i>
                 Import from PDF
+                {getUserAvailableCenters().length === 1 && (
+                    <span style={{ fontSize: '12px', marginLeft: '5px' }}>
+                        ({getUserAvailableCenters()[0]?.name})
+                    </span>
+                )}
             </Button>
             <button 
                 className={deleteLines.length === 0 ? "logout-button-grey" : "logout-button"} 
