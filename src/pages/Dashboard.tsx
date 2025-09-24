@@ -265,7 +265,7 @@ export function Dashboard({ data, user }: { data: any, user?: any }) {
     const [isFilterFinancal, setIsFilterFinancal] = useState<boolean>(true);
     const [isFilterPiePlot, setIsFilterPiePlot] = useState<boolean>(true);
     const [isFilterRevenue, setIsFilterRevenue] = useState<boolean>(true);
-    const [isGraphicView, setIsGraphicView] = useState<boolean>(true);
+    const [isGraphicView, setIsGraphicView] = useState<boolean>(false);
     const [idButtons, setIdButtons] = useState<number>(0);
 
     // Initialize centers and employees based on user permissions
@@ -286,16 +286,28 @@ export function Dashboard({ data, user }: { data: any, user?: any }) {
     
     // Memoize filtered centers and employees to prevent infinite re-renders
     const centers = useMemo(() => {
-        return isAdmin ? allCenters : userCenterIds.filter((centerId: string) => allCenters.includes(centerId));
+        // For dashboard charts, show all centers if user has any centers assigned, otherwise show all
+        if (isAdmin) {
+            return allCenters;
+        } else {
+            const filteredCenters = userCenterIds.filter((centerId: string) => allCenters.includes(centerId));
+            // If no matching centers found, show all centers for dashboard viewing
+            return filteredCenters.length > 0 ? filteredCenters : allCenters;
+        }
     }, [isAdmin, allCenters, userCenterIds]);
     
     const employes = useMemo(() => {
         if (!data?.users || !Array.isArray(data.users)) return [];
-        return isAdmin ? allEmployees : 
-            allEmployees.filter((employeeId: string) => {
+        if (isAdmin) {
+            return allEmployees;
+        } else {
+            const filteredEmployees = allEmployees.filter((employeeId: string) => {
                 const employee = data.users.find((u: any) => u._id === employeeId);
                 return employee?.centers?.some((centerIds: string) => userCenterIds.includes(centerIds));
             });
+            // If no matching employees found, show all employees for dashboard viewing
+            return filteredEmployees.length > 0 ? filteredEmployees : allEmployees;
+        }
     }, [isAdmin, allEmployees, userCenterIds, data?.users]);
     
 
@@ -425,6 +437,21 @@ export function Dashboard({ data, user }: { data: any, user?: any }) {
     const dataFilteredFinancial = applyFilter(data, "center", financialTransItems, [`${filterFinDateBegin}T00:00:00.000Z`, `${filterFinDateEnd}T00:00:00.000Z`], [])
     const dataFilteredPiePlot = applyFilter(data, "center", piePlotRevenueItems,[`${filterPieDateBegin}T00:00:00.000Z`, `${filterPieDateEnd}T00:00:00.000Z`], [])
     const dataFilteredPerEmp = applyFilter(data, "worker", revenuePerEmployeItems, [`${filterRevDateBegin}T00:00:00.000Z`, `${filterRevDateEnd}T00:00:00.000Z`], filterCenterEmploye)
+    
+    // Debug logging
+    console.log('Dashboard Debug:', {
+        isAdmin,
+        hasTransactionData: data?.transaction?.length || 0,
+        centers: centers.length,
+        employes: employes.length,
+        financialTransItems: financialTransItems.length,
+        piePlotRevenueItems: piePlotRevenueItems.length,
+        revenuePerEmployeItems: revenuePerEmployeItems.length,
+        dataFilteredFinancial: dataFilteredFinancial.length,
+        dataFilteredPiePlot: dataFilteredPiePlot.length,
+        dataFilteredPerEmp: dataFilteredPerEmp.length,
+        isGraphicView
+    });
 
     // Data filtering complete
 
