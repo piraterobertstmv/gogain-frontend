@@ -95,7 +95,6 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
 
                 // Filter data based on user permissions
                 const isUserAdmin = user?.isAdmin === true;
-                const userCenterIds = user?.centers || [];
                 
                 // Filter transactions for regular users (only show transactions where they are the worker)
                 const filteredTransactions = isUserAdmin ? sortedTransactions : 
