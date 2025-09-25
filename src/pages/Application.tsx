@@ -97,21 +97,21 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                 const isUserAdmin = user?.isAdmin === true;
                 const userCenterIds = user?.centers || [];
                 
-                // Filter transactions for regular users (only show transactions from assigned centers)
+                // Filter transactions for regular users (only show transactions where they are the worker)
                 const filteredTransactions = isUserAdmin ? sortedTransactions : 
                     sortedTransactions.filter(transaction => 
-                        userCenterIds.includes(transaction.center)
+                        transaction.worker === user._id
                     );
 
-                // Filter cost transactions for regular users (only show cost transactions from assigned centers)
+                // Filter cost transactions for regular users (only show cost transactions where they are the worker)
                 const filteredCostTransactions = isUserAdmin ? sortedCostTransactions : 
                     sortedCostTransactions.filter(costTransaction => 
-                        userCenterIds.includes(costTransaction.center)
+                        costTransaction.worker === user._id
                     );
                 
                 console.log('User permissions:', { 
                     isAdmin: isUserAdmin, 
-                    assignedCenters: userCenterIds,
+                    userId: user._id,
                     totalTransactions: sortedTransactions.length,
                     filteredTransactions: filteredTransactions.length,
                     totalCostTransactions: sortedCostTransactions.length,
@@ -229,7 +229,7 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                     setIdButtonsLeft={handleNavigationClick}
                     setUser={setUser}
                 />
-                <div style={{ flex: 1, overflow: "auto" }}>
+                <div style={{ flex: 1, overflow: "auto" }}>   
                 {isAdmin && (
                     <>
                         {(idButtonsLeft == 0) && (
