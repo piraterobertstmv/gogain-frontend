@@ -10,6 +10,9 @@ import { Toast, ToastContainer, Form } from "react-bootstrap";
 import './Transactions.css';
 import React from 'react';
 import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import type { OnDataChange } from './Application';
+import { apiFetch, CollectionName, DataChange, fetchPage } from '../services/api';
+import { usePagedList } from '../services/serverData';
 
 // function toCamelCaseArray(names: string[]): string[] {
 //     return names.map(name =>
@@ -25,75 +28,26 @@ import { FaArrowUp, FaArrowDown } from 'react-icons/fa';
 //     );
 // }
 
-export function Transactions({ data, reloadData, user } : { data: any, reloadData: () => void, user: any }) {
-    // Add debug console logs
-    console.log('Transactions component loaded');
-    console.log('Data received:', data);
-    console.log('User:', user);
-    
-    // Log transaction data specifically
-    if (data && data.transaction) {
-        console.log(`Transaction count: ${data.transaction.length}`);
-        if (data.transaction.length > 0) {
-            console.log('First transaction:', data.transaction[0]);
-        } else {
-            console.log('No transactions found in data');
-        }
-    } else {
-        console.log('No transaction data available');
-    }
-    
-    // Check backend API connection
-    React.useEffect(() => {
-        const checkBackend = async () => {
-            try {
-                // Use environment variable for API URL
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
-                console.log('Checking backend connection to:', apiUrl);
-                
-                const response = await fetch(apiUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-                console.log('Backend connection result:', response.status, response.ok);
-                
-                // If we have the auth token, try to load transactions directly
-                const token = localStorage.getItem('authToken');
-                if (token) {
-                    const transResponse = await fetch(`${apiUrl}transaction`, {
-                        method: 'GET',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                        },
-                    });
-                    if (transResponse.ok) {
-                        const transData = await transResponse.json();
-                        console.log('Transactions API response:', transData);
-                    } else {
-                        console.error('Failed to fetch transactions from API:', transResponse.status);
-                    }
-                }
-            } catch (error) {
-                console.error('Backend connection check failed:', error);
-            }
-        };
-        
-        checkBackend();
-    }, []);
+const NO_COLUMN_FILTERS: string[] = [];
+const PAGE_SIZE = 100;
+
+export function Transactions({ data, onDataChange, user } : { data: any, onDataChange: OnDataChange, user: any }) {
+    // (Removed: a mount-time "connection check" that downloaded every transaction a
+    // second time only to log it, plus several console.logs that ran on every render.)
 
     const [show, setShow] = useState(false);
     const handleShow = () => setShow(true);
 
-    const handleClose = () => {
-        reloadData();
-        setShow(false)
-    }
-
     const [idButtons, setIdButtons] = useState(0);
     const [subNavigation, setSubNavigation] = useState(0); // 0 = transactions, 1 = costs
+    const currentCollection: CollectionName = subNavigation === 0 ? "transaction" : "costTransactions";
+
+    // Called when a form closes; `change` is only set after a successful save/delete,
+    // and only that record is updated in memory (no reload).
+    const handleClose = React.useCallback((change?: DataChange) => {
+        setShow(false)
+        if (change) onDataChange(currentCollection, change);
+    }, [onDataChange, currentCollection])
 
     const buttonsName: string[] = [
         "transaction"
@@ -109,9 +63,7 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     
     // Filter sub-navigation based on user permissions - only admins can see Costs
     const filteredSubNavigationNames = isAdmin ? subNavigationNames : ["Transactions"];
-    const userPercentage = parseFloat(user?.percentage) || 0;
-    const userCenterIds = user?.centers || [];
-    const userServiceIds = user?.services || [];
+    const userCenterIds: string[] = user?.centers || NO_COLUMN_FILTERS; // stable fallback (a new [] each render would loop the filter effect)
     
     // Determine user's permission level
     const canFilter = isAdmin; // Only admins can filter
@@ -139,28 +91,30 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     const [filtersWorker, setFiltersWorker] = useState<string[]>([]);
     const [filtersService, setFiltersService] = useState<string[]>([]);
     
-    // Debug logging for filter permissions
-    console.log('Transactions Filter Permissions:', {
-        isAdmin,
-        userPercentage,
-        canFilter: 'Only admins can filter',
-        canSeeAllData,
-        userCenterIds,
-        userServiceIds,
-        centerIdsCount: centerIds.length,
-        clientIdsCount: clientIds.length,
-        workerIdsCount: workerIds.length,
-        serviceIdsCount: serviceIds.length
+    // Stable object so the table doesn't recompute its rows on unrelated re-renders
+    const tableFilters = React.useMemo(
+        () => ({ center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService }),
+        [filtersCenter, filtersClient, filtersWorker, filtersService]
+    );
+
+    // Server-side paging: only the current page is downloaded, filtered on the server.
+    // It re-fetches automatically after any save/delete (see services/serverData.ts).
+    const [page, setPage] = useState(0);
+    React.useEffect(() => { setPage(0); }, [subNavigation, filtersCenter, filtersClient, filtersWorker, filtersService]);
+    const list = usePagedList(currentCollection, {
+        page,
+        limit: PAGE_SIZE,
+        center: filtersCenter,
+        client: filtersClient,
+        worker: filtersWorker,
+        service: filtersService,
     });
-    
-    // Debug logging for current filter states
-    console.log('Current Filter States:', {
-        filtersCenter,
-        filtersClient,
-        filtersWorker,
-        filtersService
-    });
-    
+    const tableData = React.useMemo(() => ({ ...data, [currentCollection]: list.items }), [data, currentCollection, list.items]);
+    const serverPaging = React.useMemo(
+        () => ({ page, pageSize: PAGE_SIZE, total: list.total, loading: list.loading, onPageChange: setPage }),
+        [page, list.total, list.loading]
+    );
+
     // Initialize filters based on user permissions
     React.useEffect(() => {
         if (!canFilter) {
@@ -180,21 +134,17 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         type: 'success'
     });
 
-    const toggleLine = (line: string) => {
-        console.log('Toggling line:', line);
-        setDeleteLines((prev) => {
-            const newLines = prev.includes(line)
-                ? prev.filter((item) => item !== line)
-                : [...prev, line];
-            console.log('New deleteLines state:', newLines);
-            return newLines;
-        });
-    };
+    // Stable callback so memoized rows don't all re-render when one checkbox changes
+    const toggleLine = React.useCallback((line: string) => {
+        setDeleteLines((prev) => prev.includes(line)
+            ? prev.filter((item) => item !== line)
+            : [...prev, line]
+        );
+    }, []);
 
     const toggleAllLines = () => {
-        // Get the correct data source based on current sub-navigation
-        const currentData = subNavigation === 0 ? data.transaction : data.costTransactions;
-        const allIds = currentData.map((item: any) => item._id);
+        // Selects every row on the current page
+        const allIds = list.items.map((item: any) => item._id);
 
         setDeleteLines((prev) => {
             const isAllPresent = allIds.every((id :any) => prev.includes(id));
@@ -207,39 +157,28 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
         });
     };
 
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+    // Selected rows belong to the current tab; don't carry them over to the other one
+    React.useEffect(() => { setDeleteLines([]); }, [subNavigation]);
 
     async function deleteSelectedTransaction(selectedId: string) {
+        const endpoint = subNavigation === 0 ? 'transaction' : 'cost-transactions';
+        const itemType = subNavigation === 0 ? 'transaction' : 'cost transaction';
         try {
-            // Determine the correct endpoint based on current sub-navigation
-            const endpoint = subNavigation === 0 ? 'transaction' : 'cost-transactions';
-            const itemType = subNavigation === 0 ? 'transaction' : 'cost transaction';
-            
-            console.log(`Deleting ${itemType} ${selectedId} with URL: ${apiUrl}${endpoint}/${selectedId}`);
-            
-            const response = await fetch(`${apiUrl}${endpoint}/${selectedId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                },
-            });
+            const response = await apiFetch(`${endpoint}/${selectedId}`, { method: 'DELETE' });
     
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
                 console.error('Delete failed:', errorData || response.statusText);
                 setNotification({
                     show: true,
-                    message: `Failed to delete ${itemType}: ${errorData?.message || response.statusText}`,
+                    message: `Failed to delete ${itemType}: ${errorData?.message || errorData?.error || response.statusText}`,
                     type: 'danger'
                 });
-                throw new Error(errorData?.message || `Failed to delete ${itemType}`);
+                return false;
             }
-            
-            console.log(`Successfully deleted ${itemType} ${selectedId}`);
             return true;
         } catch (error) {
-            console.error(`Error deleting ${subNavigation === 0 ? 'transaction' : 'cost transaction'}:`, error);
+            console.error(`Error deleting ${itemType}:`, error);
             return false;
         }
     }
@@ -261,32 +200,29 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
 
         if (isConfirmed) {
             setIsDeleting(true);
-            let successCount = 0;
+            const deletedIds: string[] = [];
             
-            for (let i = 0; i < selectedId.length; i++) {
-                const success = await deleteSelectedTransaction(selectedId[i]);
-                if (success) successCount++;
+            for (const id of selectedId) {
+                if (await deleteSelectedTransaction(id)) deletedIds.push(id);
             }
             
             setIsDeleting(false);
             
-            if (successCount > 0) {
-                // Clear selection after successful deletion
+            if (deletedIds.length > 0) {
                 setDeleteLines([]);
-                // Show success notification
                 setNotification({
                     show: true,
-                    message: `Successfully deleted ${successCount} ${itemType}(s)`,
+                    message: `Successfully deleted ${deletedIds.length} ${itemType}(s)`,
                     type: 'success'
                 });
-                // Reload data only once after all deletions
-                reloadData();
+                // Remove the deleted rows locally instead of reloading everything
+                onDataChange(currentCollection, { deletedIds });
             }
             
-            if (successCount < selectedId.length) {
+            if (deletedIds.length < selectedId.length) {
                 setNotification({
                     show: true,
-                    message: `Deleted ${successCount} of ${selectedId.length} selected ${itemTypePlural}. Some ${itemTypePlural} could not be deleted.`,
+                    message: `Deleted ${deletedIds.length} of ${selectedId.length} selected ${itemTypePlural}. Some ${itemTypePlural} could not be deleted.`,
                     type: 'danger'
                 });
             }
@@ -330,10 +266,18 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
     }, [isAdmin, subNavigation]);
 
 
-    const handleCloseBatchForm = () => {
+    // `change` is only set when the batch was saved
+    const handleCloseBatchForm = (change?: DataChange) => {
         setShowBatchModal(false);
-        reloadData();
+        if (change) onDataChange("transaction", change);
     };
+
+    // PDF import polling: the interval lives in a ref so it can be cleared on unmount.
+    // It asks the server how many cost transactions exist (a 1-row page) instead of
+    // downloading them.
+    const pollRef = React.useRef<number | null>(null);
+    React.useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
+    const countCosts = async () => (await fetchPage('costTransactions', { page: 0, limit: 1 })).total;
 
     // Handle PDF import by opening external PDF extractor with JWT token
     const handlePdfImport = () => {
@@ -369,23 +313,13 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
                 return;
             }
 
-            // Store current transaction count for comparison
-            const currentTransactionCount = data?.transaction?.length || 0;
+            // PDF imports are saved as cost transactions, so watch that collection
+            const countBeforePromise = countCosts().catch(() => null);
 
             // Construct the PDF extractor URL with center selection
             const backendUrl = 'https://gogain-backend.onrender.com';
             const pdfExtractorUrl = `https://pdf-expense-tracker.vercel.app/expense-tracker.html?token=${encodeURIComponent(authToken)}&backend=${encodeURIComponent(backendUrl)}&center=${encodeURIComponent(centerToUse)}`;
             
-            console.log('Opening PDF extractor with center selection:', {
-                hasToken: !!authToken,
-                tokenLength: authToken.length,
-                backendUrl: backendUrl,
-                selectedCenter: centerToUse,
-                availableCentersCount: availableCenters.length,
-                url: pdfExtractorUrl,
-                currentTransactionCount
-            });
-
             // Open in new tab
             const newWindow = window.open(pdfExtractorUrl, '_blank');
             
@@ -398,43 +332,37 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             setPdfImportStatus('PDF extractor opened. Waiting for import...');
             setIsPollingForImports(true);
             
-            // Poll for changes every 3 seconds for up to 5 minutes
+            // Poll every 5 seconds for up to 5 minutes, re-downloading only the cost
+            // transactions (previously: all 7 collections every 3 seconds).
+            if (pollRef.current) window.clearInterval(pollRef.current);
             let pollCount = 0;
-            const maxPolls = 100; // 5 minutes
-            
-            const pollForNewTransactions = setInterval(() => {
+            const maxPolls = 60;
+
+            pollRef.current = window.setInterval(async () => {
                 pollCount++;
-                
-                if (pollCount >= maxPolls) {
-                    clearInterval(pollForNewTransactions);
+
+                const countBefore = await countBeforePromise;
+                const countNow = await countCosts().catch(() => null);
+                if (countBefore !== null && countNow !== null && countNow > countBefore) {
+                    onDataChange("costTransactions");
+                    if (pollRef.current) window.clearInterval(pollRef.current);
+                    pollRef.current = null;
                     setIsPollingForImports(false);
-                    setPdfImportStatus(null);
-                    console.log('Stopped polling for PDF imports (timeout)');
+                    setPdfImportStatus(`Successfully imported ${countNow - countBefore} cost(s) from PDF!`);
+                    setTimeout(() => setPdfImportStatus(null), 5000);
                     return;
                 }
 
-                // Reload data and check for new transactions
-                reloadData();
-                
-                // Check if new transactions were added
-                const newTransactionCount = data?.transaction?.length || 0;
-                if (newTransactionCount > currentTransactionCount) {
-                    const importedCount = newTransactionCount - currentTransactionCount;
-                    clearInterval(pollForNewTransactions);
+                if (pollCount >= maxPolls) {
+                    if (pollRef.current) window.clearInterval(pollRef.current);
+                    pollRef.current = null;
                     setIsPollingForImports(false);
-                    setPdfImportStatus(`Successfully imported ${importedCount} transaction(s) from PDF!`);
-                    
-                    // Clear success message after 5 seconds
-                    setTimeout(() => {
-                        setPdfImportStatus(null);
-                    }, 5000);
-                    
-                    console.log(`Detected ${importedCount} new transactions from PDF import`);
+                    setPdfImportStatus(null);
+                    return;
                 }
-            }, 3000);
 
-            console.log('PDF extractor opened in new tab, polling started');
-            
+            }, 5000);
+
         } catch (error) {
             console.error('Error opening PDF extractor:', error);
             alert('Failed to open PDF extractor. Please try again.');
@@ -442,14 +370,6 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             setPdfImportStatus(null);
         }
     };
-
-    // Add an effect to log the first transaction when data loads
-    React.useEffect(() => {
-        if (data && data.transaction && data.transaction.length > 0) {
-            console.log('TRANSACTION OBJECT:', JSON.stringify(data.transaction[0], null, 2));
-            console.log('TRANSACTION KEYS:', Object.keys(data.transaction[0]));
-        }
-    }, [data]);
 
     // Floating scroll buttons state
     const [showScrollUp, setShowScrollUp] = useState(false);
@@ -689,13 +609,13 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             </Toast>
         </ToastContainer>
 
-        <Modal show={show} onHide={handleClose}>
+        <Modal show={show} onHide={() => handleClose()}>
             <Modal.Header closeButton>
                 <Modal.Title>Add {subNavigation === 0 ? "Transaction" : "Cost"}</Modal.Title>
             </Modal.Header>
             <DatabaseForm columnName={subNavigation === 0 ? "transaction" : "costTransactions"} data={data} defaultValue={null} closePopupFunc={handleClose} user={user} />
         </Modal>
-        <Modal show={showBatchModal} onHide={handleCloseBatchForm} size="lg">
+        <Modal show={showBatchModal} onHide={() => handleCloseBatchForm()} size="lg">
             <Modal.Header closeButton>
                 <Modal.Title>Add Multiple Transactions</Modal.Title>
             </Modal.Header>
@@ -706,14 +626,18 @@ export function Transactions({ data, reloadData, user } : { data: any, reloadDat
             />
         </Modal>
         
-        <Table 
-            key={subNavigation === 0 ? "transactions" : "costs"} 
+        {list.error && (
+            <div className="alert alert-danger">Could not load {subNavigation === 0 ? "transactions" : "costs"}: {list.error}</div>
+        )}
+        <Table
+            key={subNavigation === 0 ? "transactions" : "costs"}
             column={subNavigation === 0 ? "transaction" : "costTransactions"} 
-            data={data} 
+            data={tableData} 
+            serverPaging={serverPaging}
             resetDataFunc={handleClose} 
             user={user} 
-            filters={{center: filtersCenter, client: filtersClient, worker: filtersWorker, service: filtersService}} 
-            columnFilters={[]} 
+            filters={tableFilters} 
+            columnFilters={NO_COLUMN_FILTERS} 
             deleteFunction={toggleLine} 
             toggleAllLines={toggleAllLines} 
             deleteLines={deleteLines}

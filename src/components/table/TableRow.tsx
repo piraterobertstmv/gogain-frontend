@@ -1,40 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Modal from 'react-bootstrap/Modal';
 import './Table.css';
 import { DatabaseForm } from "../popup/DatabaseForm";
 import React from 'react';
+import { netAmount } from '../../tools/finance';
+import { isTransactionTable, NET_AMOUNT_COLUMN } from './columns';
 
 function formatNumber(value: number): string {
     // Always show 2 decimal places with European comma format
     return value.toFixed(2).replace('.', ',')
 }
 
-export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetDataFunc, user, deleteFunction, deleteLines }: { column: string, data: any, dataRow: any , indexIn: number, deleteColumns: string[], resetDataFunc: any, user: any, deleteFunction: any, deleteLines: any }) {
+// Memoized: a row only re-renders when its own data, selection or the lookup tables change.
+export const TableRow = React.memo(TableRowInner);
+
+// `columns` is the same ordered list TableHead renders (see columns.ts), so cells always line up.
+function TableRowInner({ column, columns, data, dataRow, indexIn, resetDataFunc, user, deleteFunction, isSelected }: { column: string, columns: string[], data: any, dataRow: any , indexIn: number, resetDataFunc: any, user: any, deleteFunction: any, isSelected: boolean }) {
     const [show, setShow] = useState(false);
-    const rowRef = useRef<HTMLTableRowElement>(null);
 
-    // Effect to hide duplicate Index cells
-    useEffect(() => {
-        if (rowRef.current && (column === "transaction" || column === "costTransactions")) {
-            // We know the 2nd column is the intended index column (row number)
-            const cells = rowRef.current.querySelectorAll('td');
-            
-            if (cells.length > 2) {
-                // Check if cell at index 2 contains the value "1" (the problematic index column)
-                // Note: cell at index 0 is checkbox, cell at index 1 is the row number
-                let valueAtIndex2 = cells[2].textContent?.trim();
-                
-                // If we find a cell with content "1" at index 2, hide it - it's our duplicate index
-                if (valueAtIndex2 === '1') {
-                    cells[2].style.display = 'none';
-                }
-            }
-        }
-    }, [indexIn, column]);
-
-    const handleClose = () => {
+    // `change` is only provided after a successful save/delete; plain closing does nothing else.
+    const handleClose = (change?: any) => {
         setShow(false)
-        resetDataFunc()
+        if (change) resetDataFunc(change)
     }
     
     // Check if user can edit this type of data
@@ -80,13 +67,14 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
                 return dataRow.originalClientName;
             }
             
-            if (dataRow.typeOfClient == "supplier")
-                return dataRow.client;
-            
-            // Check if we have this client in our entity mappings
+            // Check if we have this client in our entity mappings. This also covers older
+            // supplier rows, which the backend used to save as a Client id instead of text.
             if (data.entityMappings && data.entityMappings.clients && data.entityMappings.clients[value]) {
                 return data.entityMappings.clients[value];
             }
+
+            if (dataRow.typeOfClient == "supplier")
+                return dataRow.client;
             
             if (data.client == undefined)
                 return value; // Return the value/ID as last resort
@@ -272,171 +260,55 @@ export function TableRow({ column, data, dataRow, indexIn, deleteColumns, resetD
         return res
     }
 
-    const backgroundColors: string[] = ["#fff", "#eee"]
+    const background = indexIn % 2 === 0 ? "#fff" : "#eee"
+    const cellStyle = { backgroundColor: background, cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px" } as const
 
-    // For transaction tables, use the defined column order
-    if (column === "transaction" || column === "costTransactions") {
-        return (
-            <>
-                <tr onClick={handleShow} ref={rowRef}>
-                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
+    function renderCell(key: string) {
+        if (key === NET_AMOUNT_COLUMN) {
+            return formatNumber(netAmount(dataRow)) + '€'
+        }
+        const cellValue = findCorrectValue(key, dataRow[key])
+        if (typeof cellValue === 'object' && cellValue !== null) {
+            return Array.isArray(cellValue) ? cellValue.join(", ") : ""
+        }
+        return cellValue || ""
+    }
+
+    const showCheckbox = isTransactionTable(column)
+
+    return (
+        <>
+            <tr onClick={handleShow} style={column === "users" ? { cursor: canEdit ? "pointer" : "default", opacity: canEdit ? 1 : 0.7 } : undefined}>
+                {showCheckbox && (
+                    <td style={cellStyle}>
                         <input
                             type="checkbox"
-                            checked={deleteLines.includes(dataRow._id)}
+                            checked={isSelected}
                             onChange={(e) => {
                                 e.stopPropagation();
                                 deleteFunction(dataRow._id);
                             }}
                             style={{ cursor: "pointer", width: "1vw" }}
                             onClick={(e) => e.stopPropagation()}
-                            aria-label={`Select transaction ${indexIn}`}
+                            aria-label={`Select row ${indexIn}`}
                         />
                     </td>
-                    
-                    {/* Index cell - this is the row number */}
-                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
-                    
-                    {/* We need to include the problematic index cell so our DOM manipulation works */}
-                    {dataRow.index && (
-                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                            {dataRow.index}
-                        </td>
-                    )}
-                    
-                    {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                        if (!deleteColumns.includes(key)) {
-                            return (
-                                <React.Fragment key={`header-${index}`}>
-                                    <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                        {(() => {
-                                            const cellValue = findCorrectValue(key, value);
-                                            if (typeof cellValue === 'object' && cellValue !== null) {
-                                                // For arrays, join them
-                                                if (Array.isArray(cellValue)) {
-                                                    return cellValue.join(", ");
-                                                }
-                                                // For other objects, return empty string
-                                                return "";
-                                            }
-                                            return cellValue || "";
-                                        })()}
-                                    </td>
+                )}
 
-                                    {(column === "transaction" || column === "costTransactions") && key === "cost" && !deleteColumns.includes("amountWithTaxes") && (
-                                        <td style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} key={`amount-with-taxes-${index}`}>
-                                            {formatNumber(dataRow.cost / (1 + ((dataRow.taxes) / 100))) + '€'}
-                                        </td>
-                                    )}
-                                </React.Fragment>
-                            )
-                        }
-                        return null
-                    })}
-                </tr>
+                {/* Row number */}
+                <td style={cellStyle} scope="row">{indexIn}</td>
 
-                <Modal show={show} onHide={handleClose}>
-                    <Modal.Header closeButton>
-                        <Modal.Title>Add {column}</Modal.Title>
-                    </Modal.Header>
-                    <DatabaseForm columnName={column} data={data} defaultValue={findCorrectDefaultValue()} closePopupFunc={handleClose} user={user}/>
-                </Modal>
-            </>
-        );
-    }
+                {columns.map((key) => (
+                    <td key={key} style={cellStyle}>{renderCell(key)}</td>
+                ))}
+            </tr>
 
-    // For users tables, use the specific column order to match the design
-    if (column === "users") {
-        const orderedColumns = [
-            "email",
-            "isAdmin", 
-            "centers",
-            "services",
-            "lastName",
-            "firstName",
-            "percentage"
-        ];
-
-        return (
-            <>
-                <tr onClick={handleShow} ref={rowRef} style={{ cursor: canEdit ? "pointer" : "default", opacity: canEdit ? 1 : 0.7 }}>
-                    {/* Index cell - this is the row number */}
-                    <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
-                    
-                    {orderedColumns.map((key, index) => {
-                        // Skip any explicitly excluded columns
-                        if (deleteColumns.includes(key)) {
-                            return null;
-                        }
-
-                        const value = dataRow[key];
-                        return (
-                            <td key={`user-${index}`} scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                {(() => {
-                                    console.log(`Processing users table - key: ${key}, value:`, value);
-                                    const cellValue = findCorrectValue(key, value);
-                                    console.log(`Processed value for ${key}:`, cellValue);
-                                    if (typeof cellValue === 'object' && cellValue !== null) {
-                                        // For arrays, join them
-                                        if (Array.isArray(cellValue)) {
-                                            return cellValue.join(", ");
-                                        }
-                                        // For other objects, return empty string
-                                        return "";
-                                    }
-                                    return cellValue || "";
-                                })()}
-                            </td>
-                        );
-                    })}
-                </tr>
-
-                <Modal show={show} onHide={handleClose}>
-                    <Modal.Header closeButton>
-                        <Modal.Title>Add {column}</Modal.Title>
-                    </Modal.Header>
-                    <DatabaseForm columnName={column} data={data} defaultValue={findCorrectDefaultValue()} closePopupFunc={handleClose} user={user}/>
-                </Modal>
-            </>
-        );
-    }
-
-    // For non-transaction tables, use the original logic
-    return (
-    <>
-        <tr onClick={handleShow} ref={rowRef}>
-            <td style={{ backgroundColor: backgroundColors[indexIn % 2], verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }} scope="row">{indexIn.toString()}</td>
-                
-            {Object.entries(dataRow ?? {}).map(([key, value]: any, index: number) => {
-                if (!deleteColumns.includes(key) && index !== 0) {
-                    return (
-                        <React.Fragment key={`header-${index}`}>
-                            <td scope="col" style={{ backgroundColor: backgroundColors[indexIn % 2], cursor: "pointer", verticalAlign: "middle", borderStyle: "solid", borderWidth: "0.5px 0.5px 0.5px 0.5px" }}>
-                                {(() => {
-                                    const cellValue = findCorrectValue(key, value);
-                                    if (typeof cellValue === 'object' && cellValue !== null) {
-                                        // For arrays, join them
-                                        if (Array.isArray(cellValue)) {
-                                            return cellValue.join(", ");
-                                        }
-                                        // For other objects, return empty string
-                                        return "";
-                                    }
-                                    return cellValue || "";
-                                })()}
-                            </td>
-                        </React.Fragment>
-                    )
-                }
-                return null
-            })}
-        </tr>
-
-        <Modal show={show} onHide={handleClose}>
-            <Modal.Header closeButton>
-                <Modal.Title>Add {column}</Modal.Title>
-            </Modal.Header>
-            <DatabaseForm columnName={column} data={data} defaultValue={findCorrectDefaultValue()} closePopupFunc={handleClose} user={user}/>
-        </Modal>
-    </>
+            <Modal show={show} onHide={() => handleClose()}>
+                <Modal.Header closeButton>
+                    <Modal.Title>{column === "costTransactions" ? "Edit cost" : `Edit ${column}`}</Modal.Title>
+                </Modal.Header>
+                <DatabaseForm columnName={column} data={data} defaultValue={findCorrectDefaultValue()} closePopupFunc={handleClose} user={user}/>
+            </Modal>
+        </>
     )
 }

@@ -35,9 +35,9 @@ export function CustomBarChart({ dataChart, centers, data, typeOfUnity } : { dat
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
           return (
-            <div key={months[label]} className="custom-tooltip" style={{ backgroundColor: "rgba(0, 0, 0, 0.36)", padding: "5px" }}>
+            <div key={label} className="custom-tooltip" style={{ backgroundColor: "rgba(0, 0, 0, 0.36)", padding: "5px" }}>
                 <div style={{ color: "white" }} className="mb-3">
-                    {months[label]}
+                    {months[label] ?? label}
                 </div>
                 {payload.map((value: any) => (
                     <div style={{ display: "flex" }} className="mb-1">

@@ -1,40 +1,38 @@
 import "./CenterDatasView.css"
 import { CenterDatasTable } from './CenterDatasTable'
 import { findNameWithId } from '../tools/tools';
+import { useMemo } from 'react';
+import { netAmount } from '../tools/finance';
 import casaPadel from '../assets/casa_padel.svg';
 import goGain from '../assets/Logo.png';
 import PSG from '../assets/Paris_Saint-Germain_Logo.svg';
 
-function createDataToView(data: any) {
+// Totals per center from the server (GET /reports/aggregate, grouped by center):
+// `allTimeEntries` = everything, `monthEntries` = current month. Both include revenues and
+// costs from both collections, excluding taxes.
+function createDataToView(data: any, allTimeEntries: any[], monthEntries: any[]) {
     let dataToView: any = {
         all: { month: { income: 0, costs: 0, profit: 0, margin: 0 }, accumulated: { income: 0, costs: 0, profit: 0, margin: 0 }}
     }
 
-    for (let i = 0; i < data.center.length; i++) {
-        let incomePerMonth = 0
-        let costsPerMonth = 0
-
-        let incomeAccumul = 0
-        let costsAccumul = 0
-
-        data.transaction.forEach((transaction: any) => {
-            if (transaction.center == data.center[i]._id) {
-                const dateToCheck = new Date(transaction.date)
-                const currentDate = new Date()
-
-                if (transaction.typeOfTransaction === "revenue") {
-                    incomeAccumul += (transaction.cost / (1 + (transaction.taxes / 100)))
-                
-                    if (dateToCheck.getUTCFullYear() === currentDate.getUTCFullYear() && dateToCheck.getUTCMonth() === currentDate.getUTCMonth())
-                        incomePerMonth += (transaction.cost / (1 + (transaction.taxes / 100)))
-
-                } else {
-                    costsAccumul += (transaction.cost / (1 + (transaction.taxes / 100)))
-                    if (dateToCheck.getUTCFullYear() === currentDate.getUTCFullYear() && dateToCheck.getUTCMonth() === currentDate.getUTCMonth())
-                        costsPerMonth += (transaction.cost / (1 + (transaction.taxes / 100)))
-                }
-            }
+    const totals = new Map<string, { incomeMonth: number, costsMonth: number, incomeAll: number, costsAll: number }>()
+    const add = (entries: any[], incomeKey: 'incomeAll' | 'incomeMonth', costsKey: 'costsAll' | 'costsMonth') => {
+        entries.forEach((entry: any) => {
+            const t = totals.get(entry.center) ?? { incomeMonth: 0, costsMonth: 0, incomeAll: 0, costsAll: 0 }
+            if (entry.typeOfTransaction === "revenue") t[incomeKey] += netAmount(entry)
+            else t[costsKey] += netAmount(entry)
+            totals.set(entry.center, t)
         })
+    }
+    add(allTimeEntries, 'incomeAll', 'costsAll')
+    add(monthEntries, 'incomeMonth', 'costsMonth')
+
+    for (let i = 0; i < data.center.length; i++) {
+        const t = totals.get(data.center[i]._id) ?? { incomeMonth: 0, costsMonth: 0, incomeAll: 0, costsAll: 0 }
+        const incomePerMonth = t.incomeMonth
+        const costsPerMonth = t.costsMonth
+        const incomeAccumul = t.incomeAll
+        const costsAccumul = t.costsAll
 
         dataToView[data.center[i]._id] = {
             month: { 
@@ -151,8 +149,8 @@ function createDataToView(data: any) {
 
 
 
-export function CenterDatasView({ data } : { data: any }) {
-    const dataToView: any = createDataToView(data)
+export function CenterDatasView({ data, allTimeEntries, monthEntries } : { data: any, allTimeEntries: any[], monthEntries: any[] }) {
+    const dataToView: any = useMemo(() => createDataToView(data, allTimeEntries, monthEntries), [data, allTimeEntries, monthEntries])
     // const dataToView: any = concentrateData(data, dataToViewRaw)
     return <>
     <div style={{ display: "flex", flexWrap: "wrap", flexDirection: "column" }}>

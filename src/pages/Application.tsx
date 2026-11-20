@@ -1,138 +1,76 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Header } from '../components/Header';
 import { LeftButtonsRadio } from '../components/LeftButtonsRadio';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Dashboard } from './Dashboard';
 import { CashFlow } from './CashFlow';
 import { Setup } from './Setup';
 import { Transactions } from './Transactions';
 import { Reports } from './Reports';
 import { Settings } from './Settings';
+import { applyChangeToList, CollectionName, DataChange, fetchCollection, isTransactionCollection, REFERENCE_COLLECTIONS } from '../services/api';
+import { TransactionsVersionContext } from '../services/serverData';
+
+// Called by pages after something was saved or deleted.
+// - With a `change`: the data is patched in memory (no network).
+// - Without one: only that collection is downloaded again.
+export type OnDataChange = (collection: CollectionName, change?: DataChange) => void;
 
 export function Application({ user, setUser }: { user: any, setUser: any }) {
     const [data, setData] = useState<any>({});
-    const [reload, setReload] = useState(0);
-    
-    const handleReload = () => {
-        setReload(prev => prev + 1);
-    };
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
+
+    // Latest data, readable from callbacks without re-creating them
+    const dataRef = useRef<any>(data);
+    useEffect(() => { dataRef.current = data; }, [data]);
+
+    // Bumped whenever a transaction or cost changes; the paged lists and report totals
+    // (see services/serverData.ts) re-fetch when it changes.
+    const [transactionsVersion, setTransactionsVersion] = useState(0);
+
+    // Download the given reference collections (all of them on first load) and merge them into `data`.
+    // Transactions are not downloaded here any more — they're paged / aggregated on the server.
+    const refresh = useCallback(async (collections: CollectionName[] = REFERENCE_COLLECTIONS) => {
+        try {
+            const lists = await Promise.all(collections.map(fetchCollection));
+            setData((prev: any) => {
+                const next = { ...prev };
+                collections.forEach((name, i) => { next[name] = lists[i]; });
+                return next;
+            });
+            setLoadError(null);
+        } catch (error: any) {
+            console.error('Error fetching data:', error);
+            setLoadError(error.message || 'Failed to load data');
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Use environment variable for API URL instead of hardcoded localhost
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
-                console.log('Application: Using API URL:', apiUrl);
-                
-                // Get the authentication token
-                const token = localStorage.getItem('authToken');
-                const headers = {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                };
-                
-                // Log headers for debugging
-                console.log('Using headers:', headers);
-                
-                const [transactions, clients, users, centers, services, costs, costTransactions] = await Promise.all([
-                    fetch(`${apiUrl}transaction`, { headers }),
-                    fetch(`${apiUrl}client`, { headers }),
-                    fetch(`${apiUrl}users`, { headers }),
-                    fetch(`${apiUrl}center`, { headers }),
-                    fetch(`${apiUrl}service`, { headers }),
-                    fetch(`${apiUrl}costs`, { headers }),
-                    fetch(`${apiUrl}cost-transactions`, { headers })
-                ]);
+        refresh().finally(() => setIsLoading(false));
+    }, [refresh]);
 
-                // Log responses for debugging
-                console.log('Transaction response:', transactions.status, transactions.ok);
-                console.log('Client response:', clients.status, clients.ok);
-                console.log('Users response:', users.status, users.ok);
-                
-                const results = await Promise.all([
-                    transactions.json(),
-                    clients.json(),
-                    users.json(),
-                    centers.json(),
-                    services.json(),
-                    costs.json(),
-                    costTransactions.json()
-                ]);
-                
-                // Log the results
-                console.log('Fetched data:', {
-                    transactions: results[0].transactions?.length || 0,
-                    clients: results[1].client?.length || 0,
-                    users: results[2].users?.length || 0,
-                    centers: results[3].center?.length || 0,
-                    services: results[4].service?.length || 0,
-                    costs: results[5].costs?.length || 0,
-                    costTransactions: results[6].costs?.length || 0
-                });
-                
-                // Sort clients by first name
-                const sortedClients = results[1].client ? [...results[1].client].sort((a, b) => {
-                    // Sort by firstName (case-insensitive)
-                    return a.firstName.toLowerCase().localeCompare(b.firstName.toLowerCase());
-                }) : [];
-                
-                // Sort transactions by date (oldest to newest)
-                const sortedTransactions = results[0].transactions ? [...results[0].transactions].sort((a, b) => {
-                    // Parse dates - handle both string dates and Date objects
-                    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-                    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-                    // Sort ascending (oldest first)
-                    return dateA.getTime() - dateB.getTime();
-                }) : [];
-                
-                // Sort cost transactions by date (oldest to newest)
-                const sortedCostTransactions = results[6].costs ? [...results[6].costs].sort((a, b) => {
-                    // Parse dates - handle both string dates and Date objects
-                    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-                    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-                    // Sort ascending (oldest first)
-                    return dateA.getTime() - dateB.getTime();
-                }) : [];
+    const onDataChange: OnDataChange = useCallback((collection, change) => {
+        // Transactions/costs live on the server: just tell the lists and reports to re-fetch
+        if (isTransactionCollection(collection)) {
+            setTransactionsVersion(v => v + 1);
+        } else if (!change || (!change.upserted?.length && !change.deletedIds?.length)) {
+            refresh([collection]);
+            return;
+        } else {
+            setData((prev: any) => ({ ...prev, [collection]: applyChangeToList(collection, prev[collection], change) }));
+        }
 
-                // Filter data based on user permissions
-                const isUserAdmin = user?.isAdmin === true;
-                
-                // Filter transactions for regular users (only show transactions where they are the worker)
-                const filteredTransactions = isUserAdmin ? sortedTransactions : 
-                    sortedTransactions.filter(transaction => 
-                        transaction.worker === user._id
-                    );
-
-                // Filter cost transactions for regular users (only show cost transactions where they are the worker)
-                const filteredCostTransactions = isUserAdmin ? sortedCostTransactions : 
-                    sortedCostTransactions.filter(costTransaction => 
-                        costTransaction.worker === user._id
-                    );
-                
-                console.log('User permissions:', { 
-                    isAdmin: isUserAdmin, 
-                    userId: user._id,
-                    totalTransactions: sortedTransactions.length,
-                    filteredTransactions: filteredTransactions.length,
-                    totalCostTransactions: sortedCostTransactions.length,
-                    filteredCostTransactions: filteredCostTransactions.length 
-                });
-
-                setData({
-                    transaction: filteredTransactions,
-                    client: sortedClients,
-                    users: results[2].users || [],
-                    center: results[3].center || [],
-                    service: results[4].service || [],
-                    costs: results[5].costs || [],
-                    costTransactions: filteredCostTransactions
-                });
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            }
-        };
-
-        fetchData();
-    }, [reload]);
+        // Saving a transaction with a new client name creates that client on the server.
+        // Fetch clients only in that case.
+        if (isTransactionCollection(collection) && change?.upserted?.length) {
+            const known = new Set((dataRef.current.client || []).map((c: any) => c._id));
+            const hasUnknownClient = change.upserted.some(doc =>
+                doc && doc.typeOfClient !== 'supplier' && doc.client && !known.has(doc.client)
+            );
+            if (hasUnknownClient) refresh(['client']);
+        }
+    }, [refresh]);
 
     const [idButtonsLeft, setIdButtonsLeft] = useState(2)
 
@@ -217,6 +155,7 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
 
 
     return (
+        <TransactionsVersionContext.Provider value={transactionsVersion}>
         <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
             <Header 
                 user={user} 
@@ -228,20 +167,31 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                     setIdButtonsLeft={handleNavigationClick}
                     setUser={setUser}
                 />
-                <div style={{ flex: 1, overflow: "auto" }}>   
+                <div style={{ flex: 1, overflow: "auto" }}>
+                {loadError && (
+                    <div className="alert alert-danger m-3 d-flex justify-content-between align-items-center" role="alert">
+                        <span>Could not load data: {loadError}</span>
+                        <button className="btn btn-sm btn-outline-danger" onClick={() => refresh()}>Retry</button>
+                    </div>
+                )}
+                {isLoading ? (
+                    <div className="d-flex justify-content-center align-items-center h-100">
+                        <LoadingSpinner message="Loading data..." />
+                    </div>
+                ) : <>
                 {isAdmin && (
                     <>
                         {(idButtonsLeft == 0) && (
-                            <Dashboard data={data} />
+                            <Dashboard data={data} user={user} />
                         )}
                         {(idButtonsLeft == 1) && (
                             <CashFlow data={data} user={user} />
                         )}
                         {(idButtonsLeft == 2) && (
-                            <Setup data={data} reloadData={handleReload} user={user} />
+                            <Setup data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {idButtonsLeft == 3 && (
-                            <Transactions data={data} reloadData={handleReload} user={user} />
+                            <Transactions data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {(idButtonsLeft == 4) && (
                             <Reports data={data} />
@@ -254,29 +204,29 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                 {!isAdmin && (
                     <>
                         {(adjustedIdButtonsLeft == 0 && canAccessDashboard) && (
-                            <Dashboard data={data} />
+                            <Dashboard data={data} user={user} />
                         )}
                         {(adjustedIdButtonsLeft == 0 && !canAccessDashboard && canAccessSetup) && (
-                            <Setup data={data} reloadData={handleReload} user={user} />
+                            <Setup data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {(adjustedIdButtonsLeft == 0 && !canAccessDashboard && !canAccessSetup) && (
-                            <Transactions data={data} reloadData={handleReload} user={user} />
+                            <Transactions data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {(adjustedIdButtonsLeft == 1 && canAccessDashboard && canAccessSetup) && (
-                            <Setup data={data} reloadData={handleReload} user={user} />
+                            <Setup data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {(adjustedIdButtonsLeft == 1 && canAccessDashboard && !canAccessSetup) && (
-                            <Transactions data={data} reloadData={handleReload} user={user} />
+                            <Transactions data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {(adjustedIdButtonsLeft == 1 && !canAccessDashboard && canAccessSetup) && (
-                            <Transactions data={data} reloadData={handleReload} user={user} />
+                            <Transactions data={data} onDataChange={onDataChange} user={user} />
                         )}
                         {(adjustedIdButtonsLeft == 1 && !canAccessDashboard && !canAccessSetup) && (
                             <Settings user={user}/>
                         )}
                         {(adjustedIdButtonsLeft == 2) && (
                             canAccessDashboard ? (
-                                <Transactions data={data} reloadData={handleReload} user={user} />
+                                <Transactions data={data} onDataChange={onDataChange} user={user} />
                             ) : (
                                 <Settings user={user}/>
                             )
@@ -286,8 +236,10 @@ export function Application({ user, setUser }: { user: any, setUser: any }) {
                         )}
                     </>
                 )}
+                </>}
                 </div>
             </div>
         </div>
+        </TransactionsVersionContext.Provider>
     );
 }

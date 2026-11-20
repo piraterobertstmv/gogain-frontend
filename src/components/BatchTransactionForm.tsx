@@ -8,10 +8,12 @@ import { InputService } from './popup/InputService';
 import { InputClient } from './popup/InputClient';
 import { InputTypeOfTransaction } from './popup/InputTypeOfTransaction';
 import { InputIsSupplier } from './popup/InputIsSupplier';
+import { apiFetch, DataChange } from '../services/api';
 
 interface BatchTransactionFormProps {
     data: any;
-    closePopupFunc: () => void;
+    // Called with the inserted rows after a successful save, or with nothing on cancel
+    closePopupFunc: (change?: DataChange) => void;
     user: any;
 }
 
@@ -135,15 +137,8 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
         }
         
         try {
-            // Use environment variable for API URL instead of hardcoded localhost
-            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
-            
-            const response = await fetch(`${apiUrl}transactions/batch`, {
+            const response = await apiFetch('transactions/batch', {
                 method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
                 body: JSON.stringify({ transactions })
             });
             
@@ -151,7 +146,9 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
                 throw new Error('Network response was not ok');
             }
             
-            closePopupFunc();
+            const result = await response.json().catch(() => null);
+            // Fall back to {} (re-fetch) if the response doesn't include the inserted rows
+            closePopupFunc(result?.transactions ? { upserted: result.transactions } : {});
         } catch (error) {
             console.error('Error:', error);
             alert('Failed to save transactions');
@@ -278,7 +275,7 @@ export function BatchTransactionForm({ data, closePopupFunc, user }: BatchTransa
             ))}
             
             <div className="d-flex justify-content-end mt-4">
-                <Button variant="secondary" className="me-2" onClick={closePopupFunc}>
+                <Button variant="secondary" className="me-2" onClick={() => closePopupFunc()}>
                     Cancel
                 </Button>
                 <Button variant="primary" onClick={saveTransactions}>

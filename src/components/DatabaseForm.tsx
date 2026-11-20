@@ -42,7 +42,7 @@ export function DatabaseForm({ data, closePopupFunc, user, onSuccess }: Database
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
                 },
                 body: JSON.stringify(bodyApi)
             });

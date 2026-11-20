@@ -1,9 +1,19 @@
 import './LeftButtonsRadio.css'
 
 export function LeftButtonsRadio({ buttonsName, idButtonsName, setIdButtonsLeft, setUser }: { buttonsName: any, idButtonsName: number, setIdButtonsLeft: any, setUser: any }) {
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        const token = localStorage.getItem('authToken');
         localStorage.removeItem('authToken');
         setUser({})
+
+        // Invalidate the token server-side too (best effort — the UI logs out regardless)
+        if (token) {
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
+            fetch(`${apiUrl}users/logout`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).catch(() => {});
+        }
     };
     
     return (
