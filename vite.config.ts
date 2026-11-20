@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: 5173
   },
-  define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'https://gogain-backend.onrender.com/')
-  },
+  // VITE_API_URL comes from .env.[mode] files or the build environment
+  // (e.g. the CI secret). Don't override it with `define`: that bypassed
+  // .env.development and pointed local dev at the production backend.
 })

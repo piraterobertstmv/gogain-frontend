@@ -50,7 +50,6 @@ export function Login({setUser}: {setUser: any}) {
             console.log('Login response status:', response.status);
             
             const responseData = await response.json();
-            console.log('Login response data:', responseData);
 
             if (!response.ok) {
                 throw new Error(responseData.message || 'Login failed')

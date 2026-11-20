@@ -1,149 +1,108 @@
 import {TableHead} from "./TableHead"
 import {TableRow} from "./TableRow"
+import { getVisibleColumns } from "./columns"
 import './Table.css';
 import React from 'react';
 
-export function Table({ column, data, resetDataFunc, user, filters, columnFilters, deleteFunction, toggleAllLines, deleteLines }: { column: string, data: any, resetDataFunc: any, user: any, filters: any, columnFilters: any, deleteFunction: any, toggleAllLines: any, deleteLines: any }) {
-    const foundClient: string[] = []
-    const foundCenter: string[] = []
-    const foundWorker: string[] = []
-    const foundService: string[] = []
-    const [rows, setRows] = React.useState<any[]>(data[column] || [])
+const PAGE_SIZE = 100;
+// Shared empty array, so a missing filter doesn't create a new [] on every render
+const NO_IDS: string[] = [];
 
-    // Initialize rows when data changes
-    React.useEffect(() => {
-        if (data[column]) {
-            setRows(data[column]);
-        }
-    }, [data, column]);
+const BASE_DELETE_COLUMNS: string[] = [
+    "_id",
+    "__v",
+    "index",
+    "secondaryPhoneNumber",
+    "originalDateFormat",
+    "originalClientName",
+    "originalCenterName",
+    "originalServiceName",
+    "originalWorkerName",
+    "permissions",
+    "role",
+    "assignedCenters",
+    "assignedServices"
+];
 
-    const deleteColumns: string[] = [
-        "_id",
-        "__v",
-        "index",
-        "secondaryPhoneNumber",
-        "originalDateFormat",
-        "originalClientName",
-        "originalCenterName",
-        "originalServiceName", 
-        "originalWorkerName",
-        "permissions",
-        "role",
-        "assignedCenters",
-        "assignedServices"
-    ].concat(columnFilters)
-    
-    // Remove the old rows variable since we're using state now
-    // const rows = data[column] ?? [];
+function fullName(entity: any, fallback: string) {
+    return entity.firstName && entity.lastName
+        ? `${entity.firstName} ${entity.lastName}`
+        : (entity.name || fallback);
+}
 
-    // Create comprehensive entity mappings for display
-    const entityMappings = {
-        clients: {} as Record<string, string>,
-        centers: {} as Record<string, string>,
-        services: {} as Record<string, string>,
-        workers: {} as Record<string, string>
-    };
-    
-    // Map clients
-    if (data.client && Array.isArray(data.client)) {
-        data.client.forEach((client: any) => {
-            const name = client.firstName && client.lastName 
-                ? `${client.firstName} ${client.lastName}`
-                : (client.name || 'Unknown');
-            entityMappings.clients[client._id] = name;
-        });
-    }
-    
-    // Map centers
-    if (data.center && Array.isArray(data.center)) {
-        data.center.forEach((center: any) => {
-            entityMappings.centers[center._id] = center.name || 'Unknown Center';
-        });
-    }
-    
-    // Map services
-    if (data.service && Array.isArray(data.service)) {
-        data.service.forEach((service: any) => {
-            entityMappings.services[service._id] = service.name || 'Unknown Service';
-        });
-    }
+// Server paging: `data[column]` already holds just the current page, filtered on the server.
+export interface ServerPaging {
+    page: number;
+    pageSize: number;
+    total: number;
+    loading: boolean;
+    onPageChange: (page: number) => void;
+}
 
-    // Map workers (users)
-    if (data.users && Array.isArray(data.users)) {
-        data.users.forEach((worker: any) => {
-            const name = worker.firstName && worker.lastName 
-                ? `${worker.firstName} ${worker.lastName}`
-                : (worker.name || 'Unknown User');
-            entityMappings.workers[worker._id] = name;
-        });
-    }
+export function Table({ column, data, resetDataFunc, user, filters, columnFilters, deleteFunction, toggleAllLines, deleteLines, serverPaging }: { column: string, data: any, resetDataFunc: any, user: any, filters: any, columnFilters: any, deleteFunction: any, toggleAllLines: any, deleteLines: any, serverPaging?: ServerPaging }) {
+    const isTransactionTable = column === "transaction" || column === "costTransactions";
+    const [page, setPage] = React.useState(0);
 
-    React.useEffect(() => {
-        if (data[column]) {
-            // For transactions, apply filters
-            if (column === "transaction" || column === "costTransactions") {
-                let filteredData = [...data[column]];
-                
-                // Apply filters if they exist
-                if (filters) {
-                    // Filter by center
-                    if (filters.center && filters.center.length > 0) {
-                        filteredData = filteredData.filter((line: any) => 
-                            filters.center.includes(line.center)
-                        );
-                    }
-                    
-                    // Filter by client
-                    if (filters.client && filters.client.length > 0) {
-                        filteredData = filteredData.filter((line: any) => 
-                            filters.client.includes(line.client)
-                        );
-                    }
-                    
-                    // Filter by worker
-                    if (filters.worker && filters.worker.length > 0) {
-                        filteredData = filteredData.filter((line: any) => 
-                            filters.worker.includes(line.worker)
-                        );
-                    }
-                    
-                    // Filter by service
-                    if (filters.service && filters.service.length > 0) {
-                        filteredData = filteredData.filter((line: any) => 
-                            filters.service.includes(line.service)
-                        );
-                    }
-                }
-                
-                setRows(filteredData);
-                
-                // Populate filter options
-                data[column].forEach((line: any) => {
-                    if (line.client && !foundClient.includes(line.client)) {
-                        foundClient.push(line.client);
-                    }
-                    if (line.center && !foundCenter.includes(line.center)) {
-                        foundCenter.push(line.center);
-                    }
-                    if (line.worker && !foundWorker.includes(line.worker)) {
-                        foundWorker.push(line.worker);
-                    }
-                    if (line.service && !foundService.includes(line.service)) {
-                        foundService.push(line.service);
-                    }
-                });
-            } else {
-                // For non-transaction tables, just show all data without complex filtering
-                setRows(data[column]);
-            }
-        }
-    }, [data, column, filters])
+    const deleteColumns: string[] = React.useMemo(
+        () => BASE_DELETE_COLUMNS.concat(columnFilters || []),
+        [columnFilters]
+    );
 
-    // Debug: count how many rows pass the filter
-    let visibleRows = 0;
-    rows.forEach(() => {
-        visibleRows++;
-    });
+    // ID -> display name lookups, rebuilt only when the reference lists change
+    // (previously rebuilt on every render, and every row was handed a brand-new object).
+    const entityMappings = React.useMemo(() => {
+        const mappings = {
+            clients: {} as Record<string, string>,
+            centers: {} as Record<string, string>,
+            services: {} as Record<string, string>,
+            workers: {} as Record<string, string>
+        };
+        (data.client || []).forEach((client: any) => { mappings.clients[client._id] = fullName(client, 'Unknown'); });
+        (data.center || []).forEach((center: any) => { mappings.centers[center._id] = center.name || 'Unknown Center'; });
+        (data.service || []).forEach((service: any) => { mappings.services[service._id] = service.name || 'Unknown Service'; });
+        (data.users || []).forEach((worker: any) => { mappings.workers[worker._id] = fullName(worker, 'Unknown User'); });
+        return mappings;
+    }, [data.client, data.center, data.service, data.users]);
+
+    const rowData = React.useMemo(() => ({ ...data, entityMappings }), [data, entityMappings]);
+
+    // One ordered column list for both header and rows
+    const visibleColumns = React.useMemo(
+        () => getVisibleColumns(column, data[column] || [], deleteColumns),
+        [column, data, deleteColumns]
+    );
+
+    const filterCenter: string[] = filters?.center || NO_IDS;
+    const filterClient: string[] = filters?.client || NO_IDS;
+    const filterWorker: string[] = filters?.worker || NO_IDS;
+    const filterService: string[] = filters?.service || NO_IDS;
+
+    // Filtered rows, computed during render (no effect + extra re-render)
+    const rows: any[] = React.useMemo(() => {
+        const all: any[] = data[column] || [];
+        if (!isTransactionTable || serverPaging) return all;
+
+        const matches = (selected: string[], value: string) => selected.length === 0 || selected.includes(value);
+        return all.filter((line: any) =>
+            matches(filterCenter, line.center) &&
+            matches(filterClient, line.client) &&
+            matches(filterWorker, line.worker) &&
+            matches(filterService, line.service)
+        );
+    }, [data, column, isTransactionTable, serverPaging, filterCenter, filterClient, filterWorker, filterService]);
+
+    // Back to the first page whenever the table or the filters change
+    React.useEffect(() => { setPage(0); }, [column, filterCenter, filterClient, filterWorker, filterService]);
+
+    const pageSize = serverPaging?.pageSize ?? PAGE_SIZE;
+    const totalRows = serverPaging ? serverPaging.total : rows.length;
+    const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+    const currentPage = Math.min(serverPaging ? serverPaging.page : page, pageCount - 1);
+    const pageStart = currentPage * pageSize;
+    const pageRows = serverPaging ? rows : rows.slice(pageStart, pageStart + pageSize);
+    const goToPage = (target: number) => serverPaging ? serverPaging.onPageChange(target) : setPage(target);
+
+    const selectedIds = React.useMemo(() => new Set<string>(deleteLines || []), [deleteLines]);
 
     // Helper function to get filter display names
     const getFilterDisplayNames = (filterIds: string[], mapping: Record<string, string>) => {
@@ -151,73 +110,85 @@ export function Table({ column, data, resetDataFunc, user, filters, columnFilter
     };
 
     // Check if any filters are active
-    const hasActiveFilters = filters && (
-        (filters.center && filters.center.length > 0) ||
-        (filters.client && filters.client.length > 0) ||
-        (filters.worker && filters.worker.length > 0) ||
-        (filters.service && filters.service.length > 0)
+    const hasActiveFilters = filterCenter.length > 0 || filterClient.length > 0 || filterWorker.length > 0 || filterService.length > 0;
+
+    const pagination = totalRows > pageSize && (
+        <div className="d-flex align-items-center gap-2 my-2" style={{ fontSize: '14px' }}>
+            <button className="btn btn-sm btn-outline-secondary" disabled={currentPage === 0} onClick={() => goToPage(0)}>«</button>
+            <button className="btn btn-sm btn-outline-secondary" disabled={currentPage === 0} onClick={() => goToPage(currentPage - 1)}>‹ Previous</button>
+            <span>
+                Page {currentPage + 1} of {pageCount} · rows {pageStart + 1}–{Math.min(pageStart + pageSize, totalRows)} of {totalRows}
+            </span>
+            <button className="btn btn-sm btn-outline-secondary" disabled={currentPage >= pageCount - 1} onClick={() => goToPage(currentPage + 1)}>Next ›</button>
+            <button className="btn btn-sm btn-outline-secondary" disabled={currentPage >= pageCount - 1} onClick={() => goToPage(pageCount - 1)}>»</button>
+            {serverPaging?.loading && <span className="text-muted">Loading…</span>}
+        </div>
     );
 
     return (
         <>
             {/* Active Filters Display */}
-            {(column === "transaction" || column === "costTransactions") && hasActiveFilters && (
-                <div style={{ 
-                    marginBottom: '10px', 
-                    padding: '8px 12px', 
-                    backgroundColor: '#f8f9fa', 
-                    border: '1px solid #dee2e6', 
+            {isTransactionTable && hasActiveFilters && (
+                <div style={{
+                    marginBottom: '10px',
+                    padding: '8px 12px',
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #dee2e6',
                     borderRadius: '4px',
                     fontSize: '14px'
                 }}>
                     <strong>Active Filters:</strong>
-                    {filters.center && filters.center.length > 0 && (
+                    {filterCenter.length > 0 && (
                         <span style={{ marginLeft: '15px' }}>
-                            <strong>Center:</strong> {getFilterDisplayNames(filters.center, entityMappings.centers)}
+                            <strong>Center:</strong> {getFilterDisplayNames(filterCenter, entityMappings.centers)}
                         </span>
                     )}
-                    {filters.client && filters.client.length > 0 && (
+                    {filterClient.length > 0 && (
                         <span style={{ marginLeft: '15px' }}>
-                            <strong>Client:</strong> {getFilterDisplayNames(filters.client, entityMappings.clients)}
+                            <strong>Client:</strong> {getFilterDisplayNames(filterClient, entityMappings.clients)}
                         </span>
                     )}
-                    {filters.worker && filters.worker.length > 0 && (
+                    {filterWorker.length > 0 && (
                         <span style={{ marginLeft: '15px' }}>
-                            <strong>Worker:</strong> {getFilterDisplayNames(filters.worker, entityMappings.workers)}
+                            <strong>Worker:</strong> {getFilterDisplayNames(filterWorker, entityMappings.workers)}
                         </span>
                     )}
-                    {filters.service && filters.service.length > 0 && (
+                    {filterService.length > 0 && (
                         <span style={{ marginLeft: '15px' }}>
-                            <strong>Service:</strong> {getFilterDisplayNames(filters.service, entityMappings.services)}
+                            <strong>Service:</strong> {getFilterDisplayNames(filterService, entityMappings.services)}
                         </span>
                     )}
                     <span style={{ marginLeft: '15px', color: '#6c757d' }}>
-                        Showing {rows.length} of {data[column]?.length || 0} {column === "costTransactions" ? "costs" : "transactions"}
+                        {serverPaging
+                            ? `${totalRows} matching ${column === "costTransactions" ? "costs" : "transactions"}`
+                            : `Showing ${rows.length} of ${data[column]?.length || 0} ${column === "costTransactions" ? "costs" : "transactions"}`}
                     </span>
                 </div>
             )}
-            
+
+            {pagination}
+
             <table style={{ borderCollapse: "collapse", borderSpacing: "0px" }} className="table">
-                <TableHead key={`${column}-head`} column={column} objKeys={Object.keys(data[column]?.[0] || {})} deleteColumns={deleteColumns} toggleAllLines={toggleAllLines}/>
+                <TableHead key={`${column}-head`} column={column} columns={visibleColumns} toggleAllLines={toggleAllLines}/>
                 <tbody style={{borderCollapse: "collapse", borderSpacing: "0px"}}>
-                    {rows.map((dataRow: any, index: number) => {
-                        return (
-                            <TableRow 
-                                column={column} 
-                                key={index} 
-                                dataRow={dataRow} 
-                                data={{...data, entityMappings}} 
-                                indexIn={index + 1} 
-                                deleteColumns={deleteColumns} 
-                                resetDataFunc={resetDataFunc} 
-                                user={user} 
-                                deleteFunction={deleteFunction} 
-                                deleteLines={deleteLines}
-                            />
-                        );
-                    })}
+                    {pageRows.map((dataRow: any, index: number) => (
+                        <TableRow
+                            column={column}
+                            columns={visibleColumns}
+                            key={dataRow._id ?? index}
+                            dataRow={dataRow}
+                            data={rowData}
+                            indexIn={pageStart + index + 1}
+                            resetDataFunc={resetDataFunc}
+                            user={user}
+                            deleteFunction={deleteFunction}
+                            isSelected={selectedIds.has(dataRow._id)}
+                        />
+                    ))}
                 </tbody>
             </table>
+
+            {pagination}
         </>
     )
 }

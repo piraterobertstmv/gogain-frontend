@@ -1,26 +1,37 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ButtonsRadio } from "../components/ButtonsRadio"
 import { DatabaseForm } from "../components/popup/DatabaseForm";
 import { Table } from "../components/table/Table"
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
+import type { OnDataChange } from './Application';
+import type { CollectionName, DataChange } from '../services/api';
 
-export function Setup({ data, reloadData, user } : { data: any, reloadData: any, user: any }) {
+const ALL_BUTTONS = ["users", "client", "center", "service", "costs"];
+const NO_FILTERS = { center: [], client: [], worker: [], service: [] };
+const NO_COLUMN_FILTERS: string[] = [];
+
+export function Setup({ data, onDataChange, user } : { data: any, onDataChange: OnDataChange, user: any }) {
     const [show, setShow] = useState(false);
     const handleShow = () => setShow(true);
-
-    const handleClose = () => {
-        reloadData();
-        setShow(false)
-    }
 
     const [idButtons, setIdButtons] = useState(0);
     const [searchTerm, setSearchTerm] = useState("");
 
     // Filter buttons based on user permissions
     const isAdmin = user?.isAdmin === true;
-    const allButtons = ["users", "client", "center", "service", "costs"];
-    const buttonsName: string[] = isAdmin ? allButtons : allButtons.filter(button => button !== "users");
+    const buttonsName: string[] = useMemo(
+        () => isAdmin ? ALL_BUTTONS : ALL_BUTTONS.filter(button => button !== "users"),
+        [isAdmin]
+    );
+    const currentColumn = buttonsName[idButtons] as CollectionName;
+
+    // Called when a form closes. `change` is only set when something was saved/deleted,
+    // so cancelling a form no longer reloads anything.
+    const handleClose = useCallback((change?: DataChange) => {
+        setShow(false)
+        if (change) onDataChange(currentColumn, change);
+    }, [onDataChange, currentColumn])
 
     // Filter data based on search term for users table
     const filteredData = useMemo(() => {
@@ -74,13 +85,13 @@ export function Setup({ data, reloadData, user } : { data: any, reloadData: any,
             </div>
         )}
 
-        <Modal show={show} onHide={handleClose}>
+        <Modal show={show} onHide={() => handleClose()}>
             <Modal.Header closeButton>
                 <Modal.Title>Add {buttonsName[idButtons]}</Modal.Title>
             </Modal.Header>
             <DatabaseForm columnName={buttonsName[idButtons]} data={data} defaultValue={null} closePopupFunc={handleClose} user={user}/>
         </Modal>
-        <Table column={buttonsName[idButtons]} data={filteredData} resetDataFunc={handleClose} user={user} filters={{center: [], client: [], worker: [], service: []}} columnFilters={[]} deleteFunction={null} toggleAllLines={null} deleteLines={null}/>
+        <Table column={buttonsName[idButtons]} data={filteredData} resetDataFunc={handleClose} user={user} filters={NO_FILTERS} columnFilters={NO_COLUMN_FILTERS} deleteFunction={null} toggleAllLines={null} deleteLines={null}/>
     </div>
     </>
 }

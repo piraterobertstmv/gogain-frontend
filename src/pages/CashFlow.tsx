@@ -1,42 +1,50 @@
-import { 
-    calculateCashFlowSummary, 
-    calculateMonthlyCashFlow, 
+import {
+    calculateCashFlowSummary,
+    calculateMonthlyCashFlow,
     calculateDailyCashFlow,
     getCostCategoryBreakdown,
     getRevenueSourceBreakdown,
-    applyFiltersToTransactions 
+    applyFiltersToTransactions
 } from '../tools/cashFlowTools';
+import { currentYearRange } from '../tools/finance';
+import { useAggregateEntries } from '../services/serverData';
 import { CashFlowSummary } from './cashflow/CashFlowSummary';
 import { CashFlowCharts } from './cashflow/CashFlowCharts';
 import { CashFlowTrends } from './cashflow/CashFlowTrends';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 import "./dashboard.css"
 
-export function CashFlow({ data, user }: { data: any, user: any }) {
-    console.log('CashFlow component loaded');
-    console.log('Data received:', data);
-    console.log('User:', user);
+const NO_IDS: string[] = [];
 
-    // Safe access to data with null checks
+function currentMonthRange(): { begin: string, end: string } {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const lastDay = new Date(year, month, 0).getDate();
+    const mm = String(month).padStart(2, '0');
+    return { begin: `${year}-${mm}-01`, end: `${year}-${mm}-${String(lastDay).padStart(2, '0')}` };
+}
+
+export function CashFlow({ data, user }: { data: any, user: any }) {
     const allCenters = useMemo(() => {
-        if (!data?.center || !Array.isArray(data.center)) return [];
+        if (!data?.center || !Array.isArray(data.center)) return NO_IDS;
         return data.center.map((item: { _id: string }) => item._id);
     }, [data?.center]);
-    
+
     const allEmployees = useMemo(() => {
-        if (!data?.users || !Array.isArray(data.users)) return [];
+        if (!data?.users || !Array.isArray(data.users)) return NO_IDS;
         return data.users.map((item: { _id: string }) => item._id);
     }, [data?.users]);
 
     // User permissions
     const isAdmin = user?.isAdmin === true;
-    const userCenterIds = user?.centers || [];
-    
+    const userCenterIds: string[] = user?.centers || NO_IDS;
+
     const employes = useMemo(() => {
-        if (!data?.users || !Array.isArray(data.users)) return [];
-        return isAdmin ? allEmployees : 
+        if (!data?.users || !Array.isArray(data.users)) return NO_IDS;
+        return isAdmin ? allEmployees :
             allEmployees.filter((employeeId: string) => {
                 const employee = data.users.find((u: any) => u._id === employeeId);
                 return employee?.centers?.some((centerIds: string) => userCenterIds.includes(centerIds));
@@ -45,107 +53,81 @@ export function CashFlow({ data, user }: { data: any, user: any }) {
 
     const centers = isAdmin ? allCenters : userCenterIds;
 
-    // State for filters and views
-    const [filterCenterCashFlow] = useState<string[]>([]);
-    const [filterCashFlowDateBegin, setFilterCashFlowDateBegin] = useState<string>("2024-01-01");
-    const [filterCashFlowDateEnd, setFilterCashFlowDateEnd] = useState<string>("2025-12-31");
-    const [isFilterCashFlow, setIsFilterCashFlow] = useState<boolean>(false);
+    // Default to the current year (was hard-coded to 2024-01-01 … 2025-12-31, hiding all 2026 data)
+    const yearRange = currentYearRange();
 
-    // Chart view states
-    const [filterChartDateBegin, setFilterChartDateBegin] = useState<string>("2024-01-01");
-    const [filterChartDateEnd, setFilterChartDateEnd] = useState<string>("2025-12-31");
+    // Summary
+    const [filterCashFlowDateBegin, setFilterCashFlowDateBegin] = useState<string>(yearRange.begin);
+    const [filterCashFlowDateEnd, setFilterCashFlowDateEnd] = useState<string>(yearRange.end);
+    const [isFilterCashFlow, setIsFilterCashFlow] = useState<boolean>(true); // true = "This year"
 
-    // Trend view states
-    const [filterTrendDateBegin, setFilterTrendDateBegin] = useState<string>("2024-01-01");
-    const [filterTrendDateEnd, setFilterTrendDateEnd] = useState<string>("2025-12-31");
-    const [isFilterTrend, setIsFilterTrend] = useState<boolean>(false);
+    // Charts
+    const [filterChartDateBegin, setFilterChartDateBegin] = useState<string>(yearRange.begin);
+    const [filterChartDateEnd, setFilterChartDateEnd] = useState<string>(yearRange.end);
+
+    // Trends
+    const [filterTrendDateBegin, setFilterTrendDateBegin] = useState<string>(yearRange.begin);
+    const [filterTrendDateEnd, setFilterTrendDateEnd] = useState<string>(yearRange.end);
+    const [isFilterTrend, setIsFilterTrend] = useState<boolean>(false); // false = monthly, true = daily
 
     // View toggle
     const [isGraphicView, setIsGraphicView] = useState<boolean>(false);
 
-    // Get broader date range to include all data (2024-2026)
-    const currentYear = new Date().getFullYear();
-    const defaultDateRange = [`${currentYear - 1}-01-01T00:00:00.000Z`, `${currentYear + 1}-12-31T00:00:00.000Z`];
+    // The summary's "This month" / "This year" buttons now actually set the date range
+    useEffect(() => {
+        const range = isFilterCashFlow ? currentYearRange() : currentMonthRange();
+        setFilterCashFlowDateBegin(range.begin);
+        setFilterCashFlowDateEnd(range.end);
+    }, [isFilterCashFlow]);
 
-    // Enhanced filter function for cash flow data
-    const applyFilterToCashFlow = (
-        transactions: any[], 
-        costTransactions: any[], 
-        whiteListId: string[], 
-        dateRange: string[], 
-        centerFilter: string[]
-    ) => {
-        const filters = {
-            centers: centerFilter.length > 0 ? centerFilter : undefined,
-            employees: whiteListId,
-            dateBegin: dateRange[0],
-            dateEnd: dateRange[1]
-        };
+    // Totals come from the server (GET /reports/aggregate): revenues and costs from both
+    // collections, excluding taxes. Regular users are limited to their centers on the server.
+    const centerParam = isAdmin ? undefined : userCenterIds;
+    const summaryAgg = useAggregateEntries({ from: filterCashFlowDateBegin, to: filterCashFlowDateEnd, by: 'center', center: centerParam });
+    const trendAgg = useAggregateEntries({ from: filterTrendDateBegin, to: filterTrendDateEnd, by: 'worker', period: isFilterTrend ? 'day' : 'month' });
+    const chartByServiceAgg = useAggregateEntries(isGraphicView ? { from: filterChartDateBegin, to: filterChartDateEnd, by: 'service', center: centerParam } : null);
+    const chartMonthlyAgg = useAggregateEntries(isGraphicView ? { from: filterChartDateBegin, to: filterChartDateEnd, by: 'center', period: 'month', center: centerParam } : null);
+    const reportError = summaryAgg.error || trendAgg.error || chartByServiceAgg.error || chartMonthlyAgg.error;
 
-        return applyFiltersToTransactions(transactions, costTransactions, filters);
-    };
+    const split = (entries: any[]) => ({
+        revenues: entries.filter(e => e.typeOfTransaction === 'revenue'),
+        costs: entries.filter(e => e.typeOfTransaction === 'cost'),
+    });
 
-    // Filtered data for cash flow summary
-    const dataFilteredCashFlow = useMemo(() => {
-        const dateRange = [
-            filterCashFlowDateBegin || defaultDateRange[0],
-            filterCashFlowDateEnd || defaultDateRange[1]
-        ];
-        
-        return applyFilterToCashFlow(
-            data?.transaction || [],
-            data?.costTransactions || [],
-            [], // employees filter (empty = all employees)
-            dateRange,
-            centers // centers filter - show all centers
-        );
-    }, [data?.transaction, data?.costTransactions, centers, filterCashFlowDateBegin, filterCashFlowDateEnd, filterCenterCashFlow]);
+    const summaryData = useMemo(() => {
+        const { revenues, costs } = split(summaryAgg.entries);
+        return calculateCashFlowSummary(revenues, costs, "center", centers);
+    }, [summaryAgg.entries, centers]);
 
-    // Filtered data for charts
-    const dataFilteredChart = useMemo(() => {
-        const dateRange = [
-            filterChartDateBegin || defaultDateRange[0],
-            filterChartDateEnd || defaultDateRange[1]
-        ];
-        
-        return applyFilterToCashFlow(
-            data?.transaction || [],
-            data?.costTransactions || [],
-            [], // employees filter (empty = all employees)
-            dateRange,
-            centers // centers filter - show all centers
-        );
-    }, [data?.transaction, data?.costTransactions, centers, filterChartDateBegin, filterChartDateEnd]);
+    const trendData = useMemo(() => {
+        const { revenues, costs } = split(trendAgg.entries);
+        // Keep the existing employee restriction (only employees sharing the user's centers)
+        const filtered = applyFiltersToTransactions(revenues, costs, { employees: employes, dateBegin: filterTrendDateBegin, dateEnd: filterTrendDateEnd });
+        return isFilterTrend
+            ? calculateDailyCashFlow(filtered.filteredTransactions, filtered.filteredCostTransactions, "worker", data)
+            : calculateMonthlyCashFlow(filtered.filteredTransactions, filtered.filteredCostTransactions, "worker", data, filterTrendDateBegin, filterTrendDateEnd);
+    }, [trendAgg.entries, employes, isFilterTrend, data, filterTrendDateBegin, filterTrendDateEnd]);
 
-    // Filtered data for trends
-    const dataFilteredTrend = useMemo(() => {
-        const dateRange = [
-            filterTrendDateBegin || defaultDateRange[0],
-            filterTrendDateEnd || defaultDateRange[1]
-        ];
-        
-        return applyFilterToCashFlow(
-            data?.transaction || [],
-            data?.costTransactions || [],
-            employes, // employees filter - show all employees
-            dateRange,
-            [] // centers filter (empty = all centers)
-        );
-    }, [data?.transaction, data?.costTransactions, employes, filterTrendDateBegin, filterTrendDateEnd]);
+    const chartRevenueData = useMemo(() => getRevenueSourceBreakdown(split(chartByServiceAgg.entries).revenues, data), [chartByServiceAgg.entries, data]);
+    const chartCostData = useMemo(() => getCostCategoryBreakdown(split(chartByServiceAgg.entries).costs, data), [chartByServiceAgg.entries, data]);
+    const chartMonthlyData = useMemo(() => {
+        const { revenues, costs } = split(chartMonthlyAgg.entries);
+        return calculateMonthlyCashFlow(revenues, costs, "center", data, filterChartDateBegin, filterChartDateEnd);
+    }, [chartMonthlyAgg.entries, data, filterChartDateBegin, filterChartDateEnd]);
 
     return (
         <div className="main-container">
             <div className="header-section">
                 <h1 className="page-title">💰 Cash Flow Analysis</h1>
-                <p className="page-subtitle">Complete financial overview combining revenue and expenses</p>
-                
+                <p className="page-subtitle">Complete financial overview combining revenue and expenses (amounts excluding taxes)</p>
+
                 {/* Toggle between table and graphics view */}
-                <div style={{ 
-                    display: "flex", 
-                    justifyContent: "center", 
-                    alignItems: "center", 
-                    marginTop: "20px", 
-                    marginBottom: "20px" 
+                <div style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginTop: "20px",
+                    marginBottom: "20px"
                 }}>
                     <button
                         onClick={() => setIsGraphicView(false)}
@@ -186,48 +168,33 @@ export function CashFlow({ data, user }: { data: any, user: any }) {
             </div>
 
             <div className="dashboard-content">
+                {reportError && (
+                    <div className="alert alert-danger" style={{ margin: "1vw 3vw" }}>Could not load report totals: {reportError}</div>
+                )}
                 {!isGraphicView ? (
                     // Table view
                     <>
                         <div className="dashboard-section">
-                            <CashFlowSummary 
-                                data={data} 
-                                dataFiltered={calculateCashFlowSummary(
-                                    dataFilteredCashFlow.filteredTransactions,
-                                    dataFilteredCashFlow.filteredCostTransactions,
-                                    "center",
-                                    centers
-                                )}
-                                dateBeg={filterCashFlowDateBegin} 
-                                dateEnd={filterCashFlowDateEnd} 
-                                setDateBeg={setFilterCashFlowDateBegin} 
-                                setDateEnd={setFilterCashFlowDateEnd} 
-                                isGraphicView={isFilterCashFlow} 
+                            <CashFlowSummary
+                                data={data}
+                                dataFiltered={summaryData}
+                                dateBeg={filterCashFlowDateBegin}
+                                dateEnd={filterCashFlowDateEnd}
+                                setDateBeg={setFilterCashFlowDateBegin}
+                                setDateEnd={setFilterCashFlowDateEnd}
+                                isGraphicView={isFilterCashFlow}
                                 setIsGraphicView={setIsFilterCashFlow}
                             />
                         </div>
 
                         <div className="dashboard-section">
-                            <CashFlowTrends 
-                                dataFiltered={isFilterTrend ? 
-                                    calculateDailyCashFlow(
-                                        dataFilteredTrend.filteredTransactions,
-                                        dataFilteredTrend.filteredCostTransactions,
-                                        "worker",
-                                        data
-                                    ) :
-                                    calculateMonthlyCashFlow(
-                                        dataFilteredTrend.filteredTransactions,
-                                        dataFilteredTrend.filteredCostTransactions,
-                                        "worker",
-                                        data
-                                    )
-                                }
-                                dateBeg={filterTrendDateBegin} 
-                                dateEnd={filterTrendDateEnd} 
-                                setDateBeg={setFilterTrendDateBegin} 
-                                setDateEnd={setFilterTrendDateEnd} 
-                                isGraphicView={isFilterTrend} 
+                            <CashFlowTrends
+                                dataFiltered={trendData}
+                                dateBeg={filterTrendDateBegin}
+                                dateEnd={filterTrendDateEnd}
+                                setDateBeg={setFilterTrendDateBegin}
+                                setDateEnd={setFilterTrendDateEnd}
+                                isGraphicView={isFilterTrend}
                                 setIsGraphicView={setIsFilterTrend}
                             />
                         </div>
@@ -235,25 +202,14 @@ export function CashFlow({ data, user }: { data: any, user: any }) {
                 ) : (
                     // Graphics view
                     <div className="dashboard-section">
-                        <CashFlowCharts 
-                            revenueData={getRevenueSourceBreakdown(
-                                dataFilteredChart.filteredTransactions,
-                                data
-                            )}
-                            costData={getCostCategoryBreakdown(
-                                dataFilteredChart.filteredCostTransactions,
-                                data
-                            )}
-                            monthlyData={calculateMonthlyCashFlow(
-                                dataFilteredChart.filteredTransactions,
-                                dataFilteredChart.filteredCostTransactions,
-                                "center",
-                                data
-                            )}
-                            dateBeg={filterChartDateBegin} 
-                            dateEnd={filterChartDateEnd} 
-                            setDateBeg={setFilterChartDateBegin} 
-                            setDateEnd={setFilterChartDateEnd} 
+                        <CashFlowCharts
+                            revenueData={chartRevenueData}
+                            costData={chartCostData}
+                            monthlyData={chartMonthlyData}
+                            dateBeg={filterChartDateBegin}
+                            dateEnd={filterChartDateEnd}
+                            setDateBeg={setFilterChartDateBegin}
+                            setDateEnd={setFilterChartDateEnd}
                         />
                     </div>
                 )}

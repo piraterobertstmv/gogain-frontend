@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { findNameWithId } from '../../tools/tools'
 
 export function InputClient({ name, addOrModifyValueInBodyApi, data, defaultValue, errorValue, isSupplier } : { name: string, addOrModifyValueInBodyApi: any, data: any, defaultValue: string, errorValue: string, isSupplier: string }) {
@@ -11,13 +11,9 @@ export function InputClient({ name, addOrModifyValueInBodyApi, data, defaultValu
         (client.lastName + " " + client.firstName).toLowerCase().includes(searchText.toLowerCase())
     )
 
-    // Update client value when search text changes
-    useEffect(() => {
-        if (searchText && filteredClients.length === 0) {
-            // If no matching clients found, use the search text as new client name
-            addOrModifyValueInBodyApi(name, searchText);
-        }
-    }, [searchText, filteredClients.length, name, addOrModifyValueInBodyApi]);
+    // Note: the parent is notified directly from the change/select handlers below.
+    // A useEffect that re-sent searchText caused an infinite render loop, because the
+    // parent's callback is recreated on every render.
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;

@@ -1,302 +1,122 @@
 import { findNameWithId } from './tools';
+import { dateRangeBounds, dayKey, isInRange, monthKey, monthsBetween, netAmount, round2 } from './finance';
 
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+// All functions take `revenues` and `costs` lists as produced by splitEntries() in finance.ts:
+// costs include BOTH cost-type transactions and the costTransactions collection.
+// Amounts are excluding taxes (netAmount); the old code added the tax percentage to the amount.
 
-// Enhanced function that combines transactions and cost transactions
-export function calculateCashFlowSummary(transactions: any[], costTransactions: any[], colName: string, arrOfCol: string[]) {
-    let summaryData: any[] = [];
-
-    for (let i = 0; i < arrOfCol.length; i++) {
-        summaryData[i] = { 
-            name: arrOfCol[i], 
-            revenues: 0,
-            costs: 0,
-            netProfit: 0
-        };
-
-        // Process regular transactions (revenue)
-        transactions.forEach((value: any) => {
-            if (arrOfCol[i] === value[colName] && value.typeOfTransaction === "revenue") {
-                const totalAmount = value.cost + value.taxes;
-                summaryData[i].revenues += totalAmount;
-            }
-        });
-
-        // Process cost transactions (expenses)
-        costTransactions.forEach((value: any) => {
-            if (arrOfCol[i] === value[colName]) {
-                const totalAmount = value.cost + value.taxes;
-                summaryData[i].costs += totalAmount;
-            }
-        });
-
-        // Calculate net profit
-        summaryData[i].netProfit = summaryData[i].revenues - summaryData[i].costs;
-
-        // Round all values
-        summaryData[i].revenues = parseFloat(summaryData[i].revenues.toFixed(2));
-        summaryData[i].costs = parseFloat(summaryData[i].costs.toFixed(2));
-        summaryData[i].netProfit = parseFloat(summaryData[i].netProfit.toFixed(2));
-    }
-
-    return summaryData;
-}
-
-// Enhanced monthly cash flow calculation
-export function calculateMonthlyCashFlow(transactions: any[], costTransactions: any[], colName: string, data: any) {
-    let monthlyData: any[] = [];
-    const colInData: string = colName === "worker" ? "users" : colName;
-
-    // Initialize arrays for 12 months
-    for (let i = 0; i < 12; i++) {
-        monthlyData[i] = {
-            name: months[i],
-            revenues: 0,
-            costs: 0,
-            netProfit: 0
-        };
-
-        // Add entity-specific data
-        const uniqueEntities = new Set([
-            ...transactions.map((value: any) => value[colName]),
-            ...costTransactions.map((value: any) => value[colName])
-        ]);
-        
-        uniqueEntities.forEach((entityId: any) => {
-            const name = findNameWithId(data, entityId, colInData);
-            if (name) {
-                monthlyData[i][`${name}_revenues`] = 0;
-                monthlyData[i][`${name}_costs`] = 0;
-                monthlyData[i][`${name}_netProfit`] = 0;
-            }
-        });
-    }
-
-    // Process revenue transactions
-    transactions.forEach((value: any) => {
-        if (value.typeOfTransaction === "revenue") {
-            const date = new Date(value.date);
-            const monthNumber = date.getMonth();
-            const name = findNameWithId(data, value[colName], colInData);
-            const totalAmount = value.cost + value.taxes;
-
-            monthlyData[monthNumber].revenues += totalAmount;
-            if (name) {
-                monthlyData[monthNumber][`${name}_revenues`] += totalAmount;
-            }
-        }
-    });
-
-    // Process cost transactions
-    costTransactions.forEach((value: any) => {
-        const date = new Date(value.date);
-        const monthNumber = date.getMonth();
-        const name = findNameWithId(data, value[colName], colInData);
-        const totalAmount = value.cost + value.taxes;
-
-        monthlyData[monthNumber].costs += totalAmount;
-        if (name) {
-            monthlyData[monthNumber][`${name}_costs`] += totalAmount;
-        }
-    });
-
-    // Calculate net profit for each month and entity
-    for (let i = 0; i < 12; i++) {
-        monthlyData[i].netProfit = monthlyData[i].revenues - monthlyData[i].costs;
-        
-        Object.keys(monthlyData[i]).forEach(key => {
-            if (key.endsWith('_revenues')) {
-                const entityName = key.replace('_revenues', '');
-                const revenues = monthlyData[i][`${entityName}_revenues`] || 0;
-                const costs = monthlyData[i][`${entityName}_costs`] || 0;
-                monthlyData[i][`${entityName}_netProfit`] = revenues - costs;
-            }
-        });
-
-        // Round all values
-        Object.keys(monthlyData[i]).forEach(key => {
-            if (key !== 'name' && typeof monthlyData[i][key] === 'number') {
-                monthlyData[i][key] = parseFloat(monthlyData[i][key].toFixed(2));
-            }
-        });
-    }
-
-    return monthlyData;
-}
-
-// Enhanced daily cash flow calculation
-export function calculateDailyCashFlow(transactions: any[], costTransactions: any[], colName: string, data: any) {
-    let dailyData: any[] = [];
-    const colInData: string = colName === "worker" ? "users" : colName;
-    
-    // Create a unique list of days from both datasets
-    const uniqueDays = new Set();
-    [...transactions, ...costTransactions].forEach((value: any) => {
-        const date = new Date(value.date);
-        const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        uniqueDays.add(dayKey);
-    });
-    
-    const sortedDays = Array.from(uniqueDays).sort();
-    
-    // Initialize daily structure
-    sortedDays.forEach(dayKey => {
-        const dayObj: any = {
-            name: dayKey,
-            revenues: 0,
-            costs: 0,
-            netProfit: 0
-        };
-
-        // Add entity-specific data
-        const uniqueEntities = new Set([
-            ...transactions.map((value: any) => value[colName]),
-            ...costTransactions.map((value: any) => value[colName])
-        ]);
-        
-        uniqueEntities.forEach((entityId: any) => {
-            const name = findNameWithId(data, entityId, colInData);
-            if (name) {
-                dayObj[`${name}_revenues`] = 0;
-                dayObj[`${name}_costs`] = 0;
-                dayObj[`${name}_netProfit`] = 0;
-            }
-        });
-
-        dailyData.push(dayObj);
-    });
-
-    // Process revenue transactions
-    transactions.forEach((value: any) => {
-        if (value.typeOfTransaction === "revenue") {
-            const date = new Date(value.date);
-            const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            const dayIndex = sortedDays.indexOf(dayKey);
-            const name = findNameWithId(data, value[colName], colInData);
-            const totalAmount = value.cost + value.taxes;
-
-            if (dayIndex !== -1) {
-                dailyData[dayIndex].revenues += totalAmount;
-                if (name) {
-                    dailyData[dayIndex][`${name}_revenues`] += totalAmount;
-                }
-            }
-        }
-    });
-
-    // Process cost transactions
-    costTransactions.forEach((value: any) => {
-        const date = new Date(value.date);
-        const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        const dayIndex = sortedDays.indexOf(dayKey);
-        const name = findNameWithId(data, value[colName], colInData);
-        const totalAmount = value.cost + value.taxes;
-
-        if (dayIndex !== -1) {
-            dailyData[dayIndex].costs += totalAmount;
-            if (name) {
-                dailyData[dayIndex][`${name}_costs`] += totalAmount;
-            }
-        }
-    });
-
-    // Calculate net profit for each day and entity
-    dailyData.forEach(day => {
-        day.netProfit = day.revenues - day.costs;
-        
-        Object.keys(day).forEach(key => {
-            if (key.endsWith('_revenues')) {
-                const entityName = key.replace('_revenues', '');
-                const revenues = day[`${entityName}_revenues`] || 0;
-                const costs = day[`${entityName}_costs`] || 0;
-                day[`${entityName}_netProfit`] = revenues - costs;
-            }
-        });
-
-        // Round all values
-        Object.keys(day).forEach(key => {
-            if (key !== 'name' && typeof day[key] === 'number') {
-                day[key] = parseFloat(day[key].toFixed(2));
-            }
-        });
-    });
-
-    return dailyData;
-}
-
-// Get cost category breakdown for pie charts
-export function getCostCategoryBreakdown(costTransactions: any[], data: any) {
-    const categoryTotals: any = {};
-
-    costTransactions.forEach((transaction: any) => {
-        const categoryName = findNameWithId(data, transaction.service, 'costs') || 'Unknown';
-        const totalAmount = transaction.cost + transaction.taxes;
-        
-        if (categoryTotals[categoryName]) {
-            categoryTotals[categoryName] += totalAmount;
-        } else {
-            categoryTotals[categoryName] = totalAmount;
-        }
-    });
-
-    // Convert to array format for charts
-    return Object.entries(categoryTotals).map(([name, value]) => ({
-        name,
-        value: parseFloat((value as number).toFixed(2))
-    }));
-}
-
-// Get revenue source breakdown for pie charts
-export function getRevenueSourceBreakdown(transactions: any[], data: any) {
-    const sourceTotals: any = {};
-
-    transactions.forEach((transaction: any) => {
-        if (transaction.typeOfTransaction === "revenue") {
-            const sourceName = findNameWithId(data, transaction.service, 'service') || 'Unknown';
-            const totalAmount = transaction.cost + transaction.taxes;
-            
-            if (sourceTotals[sourceName]) {
-                sourceTotals[sourceName] += totalAmount;
-            } else {
-                sourceTotals[sourceName] = totalAmount;
-            }
-        }
-    });
-
-    // Convert to array format for charts
-    return Object.entries(sourceTotals).map(([name, value]) => ({
-        name,
-        value: parseFloat((value as number).toFixed(2))
-    }));
-}
-
-// Apply filters to both transaction types
-export function applyFiltersToTransactions(transactions: any[], costTransactions: any[], filters: any) {
-    const { centers, employees, dateBegin, dateEnd } = filters;
-
-    const filterTransaction = (transaction: any) => {
-        // Date filter
-        if (dateBegin || dateEnd) {
-            const transactionDate = new Date(transaction.date);
-            if (dateBegin && transactionDate < new Date(dateBegin)) return false;
-            if (dateEnd && transactionDate > new Date(dateEnd)) return false;
-        }
-
-        // Center filter
-        if (centers && centers.length > 0 && !centers.includes(transaction.center)) {
-            return false;
-        }
-
-        // Employee filter
-        if (employees && employees.length > 0 && !employees.includes(transaction.worker)) {
-            return false;
-        }
-
-        return true;
+function makeNameLookup(data: any, colInData: string) {
+    const cache = new Map<string, string>();
+    return (id: string) => {
+        if (!cache.has(id)) cache.set(id, findNameWithId(data, id, colInData));
+        return cache.get(id) as string;
     };
+}
+
+function roundRow(row: any) {
+    Object.keys(row).forEach(key => {
+        if (key !== 'name' && typeof row[key] === 'number') row[key] = round2(row[key]);
+    });
+    return row;
+}
+
+// Revenues, costs and net profit per entity (e.g. per center)
+export function calculateCashFlowSummary(revenues: any[], costs: any[], colName: string, arrOfCol: string[]) {
+    const totals = new Map<string, { revenues: number, costs: number }>();
+    arrOfCol.forEach(id => totals.set(id, { revenues: 0, costs: 0 }));
+
+    revenues.forEach(entry => { const t = totals.get(entry[colName]); if (t) t.revenues += netAmount(entry); });
+    costs.forEach(entry => { const t = totals.get(entry[colName]); if (t) t.costs += netAmount(entry); });
+
+    return arrOfCol.map(id => {
+        const t = totals.get(id)!;
+        return roundRow({ name: id, revenues: t.revenues, costs: t.costs, netProfit: t.revenues - t.costs });
+    });
+}
+
+// Shared bucket logic for monthly/daily series: totals plus `${entity}_revenues/_costs/_netProfit` columns
+function buildSeries(revenues: any[], costs: any[], colName: string, data: any, buckets: { key: string, label: string }[], keyOf: (date: any) => string) {
+    const nameOf = makeNameLookup(data, colName === "worker" ? "users" : colName);
+    const entityNames = [...new Set([...revenues, ...costs].map(entry => nameOf(entry[colName])).filter(Boolean))];
+
+    const rows = buckets.map(bucket => {
+        const row: any = { name: bucket.label, revenues: 0, costs: 0, netProfit: 0 };
+        entityNames.forEach(name => {
+            row[`${name}_revenues`] = 0;
+            row[`${name}_costs`] = 0;
+            row[`${name}_netProfit`] = 0;
+        });
+        return row;
+    });
+    const indexByKey = new Map(buckets.map((bucket, i) => [bucket.key, i]));
+
+    const add = (entry: any, field: 'revenues' | 'costs') => {
+        const index = indexByKey.get(keyOf(entry.date));
+        if (index === undefined) return;
+        const amount = netAmount(entry);
+        rows[index][field] += amount;
+        const name = nameOf(entry[colName]);
+        if (name) rows[index][`${name}_${field}`] += amount;
+    };
+    revenues.forEach(entry => add(entry, 'revenues'));
+    costs.forEach(entry => add(entry, 'costs'));
+
+    return rows.map(row => {
+        row.netProfit = row.revenues - row.costs;
+        entityNames.forEach(name => {
+            row[`${name}_netProfit`] = row[`${name}_revenues`] - row[`${name}_costs`];
+        });
+        return roundRow(row);
+    });
+}
+
+// One row per month of [dateBegin, dateEnd]. Months are keyed by year+month
+// (previously getMonth() only, which merged e.g. January 2025 with January 2026).
+export function calculateMonthlyCashFlow(revenues: any[], costs: any[], colName: string, data: any, dateBegin: string, dateEnd: string) {
+    return buildSeries(revenues, costs, colName, data, monthsBetween(dateBegin, dateEnd), monthKey);
+}
+
+// One row per day that has data (zero-padded UTC keys, sorted)
+export function calculateDailyCashFlow(revenues: any[], costs: any[], colName: string, data: any) {
+    const days = [...new Set([...revenues, ...costs].map(entry => dayKey(entry.date)))].sort();
+    return buildSeries(revenues, costs, colName, data, days.map(day => ({ key: day, label: day })), dayKey);
+}
+
+function breakdown(entries: any[], nameOf: (entry: any) => string) {
+    const totals = new Map<string, number>();
+    entries.forEach(entry => {
+        const name = nameOf(entry) || 'Unknown';
+        totals.set(name, (totals.get(name) || 0) + netAmount(entry));
+    });
+    return [...totals.entries()].map(([name, value]) => ({ name, value: round2(value) }));
+}
+
+// Cost category breakdown for pie charts (cost categories, falling back to service names)
+export function getCostCategoryBreakdown(costs: any[], data: any) {
+    return breakdown(costs, entry =>
+        findNameWithId(data, entry.service, 'costs') || findNameWithId(data, entry.service, 'service')
+    );
+}
+
+// Revenue source breakdown for pie charts
+export function getRevenueSourceBreakdown(revenues: any[], data: any) {
+    return breakdown(revenues, entry => findNameWithId(data, entry.service, 'service'));
+}
+
+// Apply center / employee / date filters (dates are whole days, end date included)
+export function applyFiltersToTransactions(revenues: any[], costs: any[], filters: any) {
+    const { centers, employees, dateBegin, dateEnd } = filters;
+    const bounds = dateRangeBounds(dateBegin, dateEnd);
+    const centerSet = centers && centers.length > 0 ? new Set(centers) : null;
+    const employeeSet = employees && employees.length > 0 ? new Set(employees) : null;
+
+    const keep = (entry: any) =>
+        isInRange(entry, bounds) &&
+        (!centerSet || centerSet.has(entry.center)) &&
+        (!employeeSet || employeeSet.has(entry.worker));
 
     return {
-        filteredTransactions: transactions.filter(filterTransaction),
-        filteredCostTransactions: costTransactions.filter(filterTransaction)
+        filteredTransactions: revenues.filter(keep),
+        filteredCostTransactions: costs.filter(keep)
     };
 }

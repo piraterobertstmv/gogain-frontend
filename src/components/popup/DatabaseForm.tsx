@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from 'react-bootstrap/Modal';
 import Button from 'react-bootstrap/Button';
 import { InputString } from './InputString';
@@ -15,22 +15,60 @@ import { InputServiceList } from './InputServiceList';
 import { InputIsSupplier } from './InputIsSupplier';
 import { InputFromService } from './InputFromService';
 import { InputTypeOfTransaction } from './InputTypeOfTransaction';
-import { findObjWithId } from '../../tools/tools';
 import React from 'react';
+import { apiFetch, DataChange, extractSavedDoc } from '../../services/api';
 
-export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, user } : { columnName: string, data: any, defaultValue: any, closePopupFunc: any, user: any }) {
-    const [dataToSendApi, setDataToSendApi]:any = useState(user.isAdmin ? {
-        typeOfClient: defaultValue !== null ? defaultValue.typeOfClient : "",
-    } : {
-        worker: user._id,
-        typeOfClient: defaultValue !== null ? defaultValue.typeOfClient : "",
+// isAdmin arrives either as a boolean (API) or as "ADMINISTRATOR" (table row display value)
+function isAdminValue(value: any): boolean {
+    return value === true || value === "ADMINISTRATOR";
+}
+
+// Frontend column name -> backend route, when they differ
+const API_ENDPOINTS: Record<string, string> = {
+    costTransactions: "cost-transactions",
+};
+
+// closePopupFunc(change): called after a successful save/delete with what changed.
+// (Closing the modal without saving calls the parent's handler with no argument.)
+export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, user } : { columnName: string, data: any, defaultValue: any, closePopupFunc: (change?: DataChange) => void, user: any }) {
+    const isNew = defaultValue === null;
+    const isNewCostTransaction = isNew && columnName === "costTransactions";
+
+    const [dataToSendApi, setDataToSendApi]:any = useState({
+        ...(user.isAdmin ? {} : { worker: user._id }),
+        typeOfClient: !isNew ? defaultValue.typeOfClient : "",
+        // A cost entry is always of type "cost"; taxes default to 0% until edited
+        ...(isNewCostTransaction ? { typeOfTransaction: "cost", taxes: 0 } : {}),
     })
 
     const [err, setErr]:any = useState({})
 
-    if ((columnName == "transaction" || columnName == "costTransactions") && !('service' in dataToSendApi) && defaultValue != null) {
-        addOrModifyValueInBodyApi('service', defaultValue.service)
+    // Amounts shown in the cost/taxes fields: the record's own values when editing,
+    // replaced by the service's defaults when the user picks a revenue service.
+    const [amountDefaults, setAmountDefaults] = useState<{ cost: number, taxes: number }>({
+        cost: Number(defaultValue?.cost ?? 0) || 0,
+        taxes: Number(defaultValue?.taxes ?? 0) || 0,
+    })
+
+    const transactionTemplate = {
+        date: "date",
+        worker: "worker",
+        center: "center",
+        typeOfTransaction: "listTransaction",
+        typeOfClient: "isSupplier",
+        client: "client",
+        service: "service",
+        cost: "costFromService",
+        costWithout: "costWithoutFromService",
+        taxes: "taxFromService",
+        typeOfMovement: "listMovement",
+        frequency: "listFrequency"
     }
+
+    // Cost entries use the same fields, minus the revenue/cost selector
+    const costTransactionTemplate = Object.fromEntries(
+        Object.entries(transactionTemplate).filter(([key]) => key !== "typeOfTransaction")
+    )
 
     const formTemplate: any = {
         center: {
@@ -52,22 +90,13 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             cost: "number",
             tax: "percentage"
         },
-        transaction: {
-            date: "date",
-            worker: "worker",
-            center: "center",
-            typeOfTransaction: "listTransaction",
-            typeOfClient: "isSupplier",
-            client: "client",
-            service: "service",
-            cost: "costFromService",
-            costWithout: "costWithoutFromService",
-            taxes: "taxFromService",
-            typeOfMovement: "listMovement",
-            frequency: "listFrequency"
-        },
+        transaction: transactionTemplate,
+        costTransactions: costTransactionTemplate,
         users: {
             email: "email",
+            // Only asked when creating a user. Editing a user never touches the password
+            // (users change their own in Settings).
+            ...(isNew ? { password: "password" } : {}),
             centers: "centerList",
             services: "serviceList",
             lastName: "string",
@@ -84,16 +113,35 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
         if (fieldName == "costWithout")
             return
 
-        let updatedData = { ...dataToSendApi };
-        
-        // Convert admin status immediately when changed
-        if (fieldName === "isAdmin") {
-            updatedData[fieldName] = value === "ADMINISTRATOR";
-        } else {
-            updatedData[fieldName] = value;
+        // When a revenue service is picked, its price and tax become the amounts
+        // (cost categories have no default price, so the typed amounts are kept).
+        const selectedService = fieldName === "service"
+            ? (data.service || []).find((s: any) => s._id === value)
+            : undefined;
+
+        if (selectedService) {
+            setAmountDefaults({ cost: Number(selectedService.cost) || 0, taxes: Number(selectedService.tax) || 0 });
         }
 
-        setDataToSendApi(updatedData)
+        setDataToSendApi((prev: any) => {
+            const updatedData = { ...prev };
+
+            // Convert admin status immediately when changed
+            if (fieldName === "isAdmin") {
+                updatedData[fieldName] = value === "ADMINISTRATOR";
+            } else {
+                updatedData[fieldName] = value;
+            }
+
+            if (selectedService) {
+                updatedData.cost = Number(selectedService.cost) || 0;
+                updatedData.taxes = Number(selectedService.tax) || 0;
+            } else if (fieldName === "service" && updatedData.taxes === undefined && isNew) {
+                updatedData.taxes = 0;
+            }
+
+            return updatedData;
+        })
     }
 
     function checkIfDataIsCorrect(): boolean {
@@ -164,6 +212,11 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                 //         tmpErr[key] = "This value must be between 4 and 9 numbers"
                 //     }
                 //     break;
+                case "password":
+                    if (typeof value !== "string" || value.length < 8) {
+                        tmpErr[key] = "The password must have at least 8 characters";
+                    }
+                    break;
                 case "percentage":
                     const numValue = Number(value);
                     if (isNaN(numValue) || numValue < 0 || numValue > 100) {
@@ -181,26 +234,18 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
     }
 
     async function deleteDataCurrentRow() {
-        const colNameDb: string = columnName == "center" ? "centers" : columnName
+        const colNameDb: string = API_ENDPOINTS[columnName] ?? columnName
 
         const fetchData = async () => {
             try {
-                // Use environment variable for API URL instead of hardcoded localhost
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
-                
-                const response = await fetch(`${apiUrl}${colNameDb}/${defaultValue._id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                    }
-                });
+                const response = await apiFetch(`${colNameDb}/${defaultValue._id}`, { method: 'DELETE' });
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ message: response.statusText }));
                     console.error('Server error:', errorData);
                     throw new Error(errorData.message || 'Network response was not ok');
                 }
-                closePopupFunc()
+                closePopupFunc({ deletedIds: [defaultValue._id] })
             } catch (error: any) {
                 console.error('Error:', error);
                 alert(`Failed to delete: ${error.message || 'Unknown error'}`);
@@ -211,11 +256,15 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
 
     async function saveChange() {
         const isModifyOrNew = defaultValue === null ? "" : "/" + defaultValue._id;
-        const colNameDb: string = columnName == "center" ? "centers" : columnName
+        const colNameDb: string = API_ENDPOINTS[columnName] ?? columnName
 
         if (colNameDb == "users") {
-            dataToSendApi["password"] = "password"
-            
+            // Never send a password when editing a user. (This used to force
+            // password = "password", resetting the user's password on every save.)
+            if (!isNew) {
+                delete dataToSendApi["password"];
+            }
+
             // Only set percentage if it's actually being updated, otherwise preserve existing value
             if ("percentage" in dataToSendApi && dataToSendApi.percentage !== "") {
                 // Convert percentage string to number
@@ -253,10 +302,11 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                     dataToSendApi["isAdmin"] = false;
                 }
             } else {
-                // Field not in dataToSendApi - preserve existing value or default to false
-                dataToSendApi["isAdmin"] = (defaultValue !== null && defaultValue.isAdmin === true) ? true : false;
+                // Field not in dataToSendApi - preserve existing value or default to false.
+                // (The table passes isAdmin as the string "ADMINISTRATOR", so `=== true`
+                // used to demote every admin whose row was edited.)
+                dataToSendApi["isAdmin"] = !isNew && isAdminValue(defaultValue.isAdmin);
             }
-            console.log('Final isAdmin value:', dataToSendApi["isAdmin"], typeof dataToSendApi["isAdmin"]);
         }
 
         if (colNameDb == "client") {
@@ -284,18 +334,8 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
             return;
 
         try {
-            // Debug: Log the data being sent
-            console.log('Data being sent to API:', dataToSendApi);
-            
-            // Use environment variable for API URL instead of hardcoded localhost
-            const apiUrl = import.meta.env.VITE_API_URL || 'https://gogain-backend.onrender.com/';
-            
-            const response = await fetch(`${apiUrl}${colNameDb}${isModifyOrNew}`, {
+            const response = await apiFetch(`${colNameDb}${isModifyOrNew}`, {
                 method: isModifyOrNew === "" ? "POST" : "PATCH",
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-                },
                 body: JSON.stringify(dataToSendApi)
             })
 
@@ -316,38 +356,25 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                 
                 throw new Error(errorData.message || 'Network response was not ok');
             }
-            closePopupFunc()
+
+            // Hand the saved record back so the app can update it in memory.
+            // If the response shape is unexpected, closing with {} makes the caller re-fetch the collection.
+            const savedDoc = extractSavedDoc(await response.json().catch(() => null))
+            closePopupFunc(savedDoc ? { upserted: [savedDoc] } : {})
         } catch (error: any) {
             console.error('Error:', error);
             alert(`Failed to save: ${error.message || 'Unknown error'}`);
         }
     }
 
-    function findValueFromService(columnServiceName: string, id: string) {
-        for (let i = 0; i < data.service.length; i++) {
-            if (data.service[i]._id == id) {
-                return data.service[i][columnServiceName]
-            }
-        }
+    // Previously a useEffect copied the service's price into cost/taxes on mount, which
+    // silently reset an edited transaction's real amount to the service default on save.
+    // That now happens only when the user actually picks a service (see addOrModifyValueInBodyApi).
+    const amountWithoutTaxes = amountDefaults.cost / (1 + (amountDefaults.taxes / 100))
 
-        if (defaultValue === null)
-            return 0
-        return defaultValue[columnServiceName === "tax" ? "taxes" : "cost"]
-    }
-
-    useEffect(() => {
-        const serviceData = findObjWithId(data, dataToSendApi.service, "service")
-
-        let updatedData = { ...dataToSendApi };
-        updatedData["cost"] = serviceData.cost
-        updatedData["taxes"] = serviceData.tax
-
-        setDataToSendApi(updatedData)
-    }, [dataToSendApi.service]);
-
-
-
-    const [isCosts, setIsCosts] = useState(defaultValue == null ? "revenue" : defaultValue.typeOfTransaction)
+    const [isCosts, setIsCosts] = useState(
+        isNew ? (columnName === "costTransactions" ? "cost" : "revenue") : defaultValue.typeOfTransaction
+    )
     
     return (
         <>
@@ -357,6 +384,9 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                         <React.Fragment key={index}>
                             {(value === "string" || value === "phoneNumber" || value === "email" || value === "number" || value == "zipcode" || value == "percentage") && (
                                 <InputString name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""} />
+                            )}
+                            {value === "password" && (
+                                <InputString type="password" name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue="" errorValue={err[key] ?? ""} />
                             )}
                             {value === "date" && (
                                 <InputDate name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""} />
@@ -396,19 +426,19 @@ export function DatabaseForm({ columnName, data, defaultValue, closePopupFunc, u
                                 <InputList name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} listOfValues={["ordinary", "extraordinary"]} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "listAdmin" && (
-                                <InputList name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} listOfValues={["ADMINISTRATOR", "REGULAR USER"]} defaultValue={defaultValue === null ? "" : (defaultValue[key] === true ? "ADMINISTRATOR" : "REGULAR USER")} errorValue={err[key] ?? ""}/>
+                                <InputList name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} listOfValues={["ADMINISTRATOR", "REGULAR USER"]} defaultValue={defaultValue === null ? "" : (isAdminValue(defaultValue[key]) ? "ADMINISTRATOR" : "REGULAR USER")} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "isSupplier" && (
                                 <InputIsSupplier name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={defaultValue === null ? "" : defaultValue[key]} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "costFromService" && (
-                                <InputFromService isCosts={isCosts} name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={findValueFromService("cost", dataToSendApi.service).toFixed(2)} errorValue={err[key] ?? ""}/>
+                                <InputFromService isCosts={isCosts} name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={amountDefaults.cost.toFixed(2)} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "costWithoutFromService" && (
-                                 <InputFromService isCosts={isCosts} name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={ (findValueFromService("cost", dataToSendApi.service) / (1 + (findValueFromService("tax", dataToSendApi.service) / 100))).toFixed(2) } errorValue={err[key] ?? ""}/>   
+                                 <InputFromService isCosts={isCosts} name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={amountWithoutTaxes.toFixed(2)} errorValue={err[key] ?? ""}/>
                             )}
                             {value == "taxFromService" && (
-                                <InputFromService isCosts={isCosts} name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={findValueFromService("tax", dataToSendApi.service)} errorValue={err[key] ?? ""}/>
+                                <InputFromService isCosts={isCosts} name={key} addOrModifyValueInBodyApi={addOrModifyValueInBodyApi} defaultValue={String(amountDefaults.taxes)} errorValue={err[key] ?? ""}/>
                             )}
                         </React.Fragment>
                     ))}

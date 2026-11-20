@@ -1,5 +1,7 @@
 import './Settings.css'
 import { findNameWithId } from '../tools/tools';
+import { getAllEntries } from '../tools/finance';
+import { fetchCollection } from '../services/api';
 import { useState } from 'react';
 
 export function Reports({ data } : { data: any }) {
@@ -101,7 +103,8 @@ export function Reports({ data } : { data: any }) {
         const headers = Object.keys(data[0]);
         const csvRows = data.map((row) => {
             const csvRow = headers.map((header) => {
-                return JSON.stringify(row[header] || "")
+                // `??` keeps 0 (the old `||` exported zero amounts as empty cells)
+                return JSON.stringify(row[header] ?? "")
             })
 
             return csvRow.join(",")
@@ -113,7 +116,8 @@ export function Reports({ data } : { data: any }) {
   
     function downloadCSV(data: any[], filename: string = "transactions.csv", allData: any) {
         const csvContent = convertArrayToCSV(modifyData(data, allData));
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        // BOM so Excel opens the file as UTF-8 (accents like "OSTÉOPATHIE" display correctly)
+        const blob = new Blob(["﻿" + csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
 
@@ -123,6 +127,28 @@ export function Reports({ data } : { data: any }) {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    const [isExporting, setIsExporting] = useState(false)
+    const [exportError, setExportError] = useState<string | null>(null)
+
+    async function exportCSV() {
+        setIsExporting(true)
+        setExportError(null)
+        try {
+            const [transaction, costTransactions] = await Promise.all([
+                fetchCollection('transaction'),
+                fetchCollection('costTransactions'),
+            ])
+            const entries = getAllEntries({ transaction, costTransactions })
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            downloadCSV(entries, "transactions.csv", data)
+        } catch (error: any) {
+            setExportError(error.message || 'Unknown error')
+        } finally {
+            setIsExporting(false)
+        }
     }
 
     return <>
@@ -150,8 +176,11 @@ export function Reports({ data } : { data: any }) {
                 </button>
             ))}
         </div>
-        <button className="logout-button" onClick={() => downloadCSV(data.transaction, "transactions.csv", data)}>
-            Export
+        {/* Revenues and costs from both collections, oldest first. Transactions aren't kept
+            in memory any more, so the full lists are downloaded only when exporting. */}
+        <button className="logout-button" disabled={isExporting} onClick={exportCSV}>
+            {isExporting ? 'Preparing export…' : 'Export'}
         </button>
+        {exportError && <div className="alert alert-danger" style={{ margin: "0 2vw" }}>Export failed: {exportError}</div>}
     </>
 }

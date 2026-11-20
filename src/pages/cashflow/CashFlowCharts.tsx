@@ -6,8 +6,6 @@ import casaPadel from '../../assets/casa_padel.svg';
 import goGain from '../../assets/Logo.png';
 import PSG from '../../assets/Paris_Saint-Germain_Logo.svg';
 
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 export function CashFlowCharts({ 
     revenueData, 
     costData,
@@ -30,8 +28,9 @@ export function CashFlowCharts({
 
     // Prepare monthly trend data for line chart
     const getMonthlyTrendData = () => {
-        return monthlyData.map((month: any, index: number) => ({
-            name: months[index],
+        // Each month already carries its label ("Mar", or "Mar 2026" for multi-year ranges)
+        return monthlyData.map((month: any) => ({
+            name: month.name,
             revenues: month.revenues || 0,
             costs: month.costs || 0,
             netProfit: month.netProfit || 0
